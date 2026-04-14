@@ -6,9 +6,11 @@
     <title>Document</title>
 </head>
 <body>
-   <ul>
-    <li><a href="/new">New Job Card Application</a></li>
-    <li><a href="/status">Check Job Card Application Status</a></li>
-   </ul>
+    <form action="/submit-new-job-card" method="POST">
+
+        <input type="text" name="crew_serial_number" placeholder="CREW Serial Number">
+        <input type="submit" value="Fetch">
+
+    </form>
 </body>
 </html>
