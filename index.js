@@ -1,7 +1,31 @@
 import express from 'express';
 import bodyParser from 'body-parser';
+import {Session} from 'express-session'
+import { Client } from 'pg'
+import ejs from 'ejs';
+
+import dotenv from 'dotenv';
+
+dotenv.config();
+
 
 const app = express();
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+
+const dbHost = process.env.DB_HOST === 'postgres' ? 'localhost' : process.env.DB_HOST;
+const dbPort = Number(process.env.DB_PORT || 5432);
+
+const client = new Client({
+user: process.env.DB_USER,
+password: process.env.DB_PASSWORD,
+host: dbHost,
+port: dbPort,
+database: process.env.DB_NAME,
+});
+
+await client.connect();
+
 
 app.get("/",async(req,res)=>{
     return res.render("home.ejs");
@@ -11,8 +35,21 @@ app.get("/new",async(req,res)=>{
     return res.render("new.ejs");
 })
 
+app.get("/new/:id",async(req,res)=>{
+    const data = await client.query("select * from ac_database where crew_serial_number=$1",[req.params.id]);
+
+    res.render("new-application.ejs",{data});
+})
+
 app.post("/fetch-ac-details",async(req,res)=>{
     const {crew_serial_number}= req.body;
+    const data = await client.query("select * from ac_database where crew_serial_number=$1",[crew_serial_number]);
+    if (data.rowCount === 0) {
+        return res.status(404).send("No AC record found for that crew serial number.");
+    }
+
+    console.log(data.rows[0]);
+    return res.render("new-application.ejs",{data:data});
 
 })
 
