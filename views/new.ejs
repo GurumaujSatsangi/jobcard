@@ -4,13 +4,52 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
+  <link rel="stylesheet" href="/styles.css">
+
 </head>
 <body>
-    <form action="/fetch-ac-details" method="POST">
+    <%- include('partials/navbar.ejs') %>
+    <table>
+        <tr>
+            <td>
+                <div class="card" style="width: 18rem;">
+  <div class="card-body">
+    <h5 class="card-title">Air Conditioning and Refrigeration Section</h5>
+    <a href="#" class="card-link">New Job Card</a>
+    <a href="#" class="card-link">Check Status</a>
+  </div>
+</div>
+            </td>
+            <td>
+                <div class="card" style="width: 18rem;">
+  <div class="card-body">
+    <h5 class="card-title">Glass Blowing Section</h5>
+        <a href="#" class="card-link">New Job Card</a>
+    <a href="#" class="card-link">Check Status</a>
+  </div>
+</div>
+            </td>
+            <td>
+                <div class="card" style="width: 18rem;">
+  <div class="card-body">
+    <h5 class="card-title">Electrical Section</h5>
+        <a href="#" class="card-link">New Job Card</a>
+    <a href="#" class="card-link">Check Status</a>
+  </div>
+</div>
+            </td>
 
-        <input type="text" name="crew_serial_number" placeholder="CREW Serial Number">
-        <input type="submit" value="Fetch">
-
-    </form>
+            <td>
+                <div class="card" style="width: 18rem;">
+  <div class="card-body">
+    <h5 class="card-title">Mechanical Section</h5>
+        <a href="#" class="card-link">New Job Card</a>
+    <a href="#" class="card-link">Check Status</a>
+  </div>
+</div>
+            </td>
+        </tr>
+    </table>
+  
 </body>
 </html>

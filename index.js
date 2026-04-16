@@ -5,6 +5,9 @@ import { Client } from 'pg'
 import ejs from 'ejs';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import jsonwebtoken from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
+
 
 dotenv.config();
 
@@ -12,6 +15,7 @@ dotenv.config();
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+app.use(express.static("public"));
 
 const transporter = nodemailer.createTransport({
   host: "smtp.example.com",
@@ -22,6 +26,7 @@ const transporter = nodemailer.createTransport({
     pass: process.env.SMTP_PASS,
   },
 });
+
 
 
 
@@ -37,10 +42,27 @@ database: process.env.DB_NAME,
 });
 
 await client.connect();
+async function UserLogin(employee_id, password) {
+    const user = await client.query(
+        "select hashed_password from users where employee_id = $1",
+        [employee_id]
+    );
+
+    if (user.rowCount === 0) {
+        return false;
+    }
+
+    const isValidPassword = await bcrypt.compare(
+        password,
+        user.rows[0].hashed_password
+    );
+
+    return isValidPassword;
+}
 
 
 app.get("/",async(req,res)=>{
-    return res.render("home.ejs");
+    return res.render("login.ejs");
 })
 
 app.get("/new",async(req,res)=>{
@@ -94,6 +116,28 @@ app.get("/manage/:id",async(req,res)=>{
     const technician = await client.query("select * from technicians");
     res.render("manage-applications.ejs",{result: data.rows[0], technician: technician.rows});
 
+})
+
+app.post("/login",async(req,res)=>{
+
+    const {emp_id,password} = req.body;
+
+    const isAuthenticated = await UserLogin(emp_id, password);
+
+    if (!isAuthenticated) {
+        return res.status(401).send("Invalid employee ID or password");
+    }
+
+    return res.redirect("/new");
+
+
+})
+
+app.get("/login",async(req,res)=>{
+
+    
+
+    return res.render("login.ejs");
 })
 
 app.post("/assign-technician",async(req,res)=>{
