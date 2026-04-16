@@ -101,7 +101,9 @@ app.get("/",async(req,res)=>{
 })
 
 app.get("/new",checkAuth, async(req,res)=>{
-    return res.render("new.ejs");
+
+    const mysubmissions = await client.query("select * from applications");
+    return res.render("new.ejs",{mysubmissions:mysubmissions.rows});
 })
 
 app.get("/new/:id",async(req,res)=>{

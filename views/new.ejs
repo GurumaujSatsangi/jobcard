@@ -9,47 +9,64 @@
 </head>
 <body>
     <%- include('partials/navbar.ejs') %>
-    <table>
-        <tr>
-            <td>
-                <div class="card" style="width: 18rem;">
-  <div class="card-body">
-    <h5 class="card-title">Air Conditioning and Refrigeration Section</h5>
-    <a href="#" class="card-link">New Job Card</a>
-    <a href="#" class="card-link">Check Status</a>
-  </div>
-</div>
-            </td>
-            <td>
-                <div class="card" style="width: 18rem;">
-  <div class="card-body">
-    <h5 class="card-title">Glass Blowing Section</h5>
-        <a href="#" class="card-link">New Job Card</a>
-    <a href="#" class="card-link">Check Status</a>
-  </div>
-</div>
-            </td>
-            <td>
-                <div class="card" style="width: 18rem;">
-  <div class="card-body">
-    <h5 class="card-title">Electrical Section</h5>
-        <a href="#" class="card-link">New Job Card</a>
-    <a href="#" class="card-link">Check Status</a>
-  </div>
-</div>
-            </td>
+  <div class="container">
 
-            <td>
-                <div class="card" style="width: 18rem;">
-  <div class="card-body">
-    <h5 class="card-title">Mechanical Section</h5>
-        <a href="#" class="card-link">New Job Card</a>
-    <a href="#" class="card-link">Check Status</a>
-  </div>
-</div>
-            </td>
+    <h4>Submit New Application</h4><hr>
+
+    <h4>My Applications</h4><hr>
+
+    <% if(mysubmissions && mysubmissions.length>0) { %>
+
+      <table class="table">
+
+        <tr>
+          <th>Application Reference Number</th>
+          <th>Section</th>
+          <th>CREW Serial Number</th>
+          <th>Description</th>
+          <th>Status</th>
+          <th>Action</th>
         </tr>
-    </table>
+
+      <% mysubmissions.forEach(function(mysubmissions){ %>
+      <tr>
+        <td>
+<%= mysubmissions.arn %>
+        </td>
+        <td>
+<%= mysubmissions.arn %>
+
+        </td>
+        <td><%= mysubmissions.crew_serial_number %>
+
+
+        </td>
+        <td>
+<%= mysubmissions.description %>
+
+        </td>
+         <td>
+              <%= mysubmissions.status %>
+
+
+                </td>
+                <td>
+                  <a href="/delete">Delete</a>
+                </td>
+      </tr>
+      
+      <% }) %>
+      </table>
+    
+    <% } else { %>
+
+      <h6>No Applications Found!</h6>
+
+      <% } %>
+
+  </div>
+
+    <%- include('partials/footer') %>
   
 </body>
 </html>
