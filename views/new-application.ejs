@@ -6,8 +6,20 @@
     <title>Document</title>
 </head>
 <body>
-    <h4>Submitting a New Job Card Application for:</h4>
-    <h4><%= data.crew_serial_number %></h4>
+    <h4>CREW Serial Number: <%= result.crew_serial_number %></h4>
     <hr>
+    <form action="/submit-new-application" method="post">
+
+        <label>Select Indentor</label>
+        <p class="small">The dropdown below show the list of possible Indentors for a Job Card Application for this Air Conditioner (<%= result.crew_serial_number %>). If you think your name should be there but is not there, please CLICK HERE.</p>
+        <hr>
+        <select name="indentor">
+            <% if (Array.isArray(result.assigned_to) && result.assigned_to.length > 0) { %>
+            <% result.assigned_to.forEach(function(person){ %>
+            <option value="<%= person %>"><%= person %></option>
+            <% }) %>
+            <% } %>
+        </select>
+    </form>
 </body>
 </html>

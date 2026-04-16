@@ -3,7 +3,7 @@ import bodyParser from 'body-parser';
 import {Session} from 'express-session'
 import { Client } from 'pg'
 import ejs from 'ejs';
-
+import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -12,6 +12,18 @@ dotenv.config();
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+
+const transporter = nodemailer.createTransport({
+  host: "smtp.example.com",
+  port: 587,
+  secure: false, // use STARTTLS (upgrade connection to TLS after connecting)
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+
+
 
 const dbHost = process.env.DB_HOST === 'postgres' ? 'localhost' : process.env.DB_HOST;
 const dbPort = Number(process.env.DB_PORT || 5432);
@@ -38,7 +50,7 @@ app.get("/new",async(req,res)=>{
 app.get("/new/:id",async(req,res)=>{
     const data = await client.query("select * from ac_database where crew_serial_number=$1",[req.params.id]);
 
-    res.render("new-application.ejs",{data});
+    res.render("new-application.ejs",{result: data.rows[0]});
 })
 
 app.post("/fetch-ac-details",async(req,res)=>{
@@ -49,7 +61,7 @@ app.post("/fetch-ac-details",async(req,res)=>{
     }
 
     console.log(data.rows[0]);
-    return res.render("new-application.ejs",{data:data});
+    return res.render("new-application.ejs",{result:data.rows[0]});
 
 })
 
