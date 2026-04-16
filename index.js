@@ -111,7 +111,6 @@ app.get("/status",async(req,res)=>{
     return res.render("status.ejs",{data:null});
 })
 
-
 app.listen(3000,async()=>{
     console.log("Running on Port 3000!");
 })
