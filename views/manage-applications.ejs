@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h4><%= result.crew_serial_number %></h4>
+      <select name="indentor">
+            <% if (Array.isArray(technician) && technician.length > 0) { %>
+            <% technician.forEach(function(technician){ %>
+            <option value="<%= technician.technician_name %>"><%= technician.technician_name %> (ID: <%= technician.technician_id %>)</option>
+            <% }) %>
+            <% } %>
+        </select>
+</body>
+</html>

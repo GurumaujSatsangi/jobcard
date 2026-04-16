@@ -91,7 +91,8 @@ app.get("/admin",async(req,res)=>{
 
 app.get("/manage/:id",async(req,res)=>{
     const data = await client.query("select * from applications where crew_serial_number = $1",[req.params.id]);
-    res.render("manage-applications.ejs",{result: data.rows[0]});
+    const technician = await client.query("select * from technicians");
+    res.render("manage-applications.ejs",{result: data.rows[0], technician: technician.rows});
 
 })
 
