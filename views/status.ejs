@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <form action="/fetch-status" method="post">
+        <input type="text" name="crew_serial_number">
+        <input type="submit" value="Fecth Status">
+    </form>
+
+    <% if (data) { %>
+
+        <table>
+            <tr>
+                <th>CREW SERIAL NUMBER</th>
+                <th>INDENTOR</th>
+                <th>STATUS</th>
+            </tr>
+            <tr>
+                <td><%= data.crew_serial_number%></td>
+                <td><%= data.indentor %></td>
+                <td><%= data.status %></td>
+            </tr>
+        </table>
+    
+    <% } %>
+
+</body>
+</html>

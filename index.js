@@ -65,8 +65,27 @@ app.post("/fetch-ac-details",async(req,res)=>{
 
 })
 
+app.post("/submit-new-application",async(req,res)=>{
+    const {indentor, crew_serial_number} = req.body;
+    const data = await client.query("insert into applications (indentor, crew_serial_number, status) values($1,$2,$3)",[indentor,crew_serial_number,"APPLICATION SUBMITTED"]);
+
+    if(data){
+        return res.send("Submitted Succesfully !");
+    }
+})
+
+app.post("/fetch-status",async(req,res)=>{
+    const {crew_serial_number} = req.body;
+    const data = await client.query("select * from applications where crew_serial_number=$1",[crew_serial_number]);
+    if (data.rowCount === 0) {
+        return res.render("status.ejs",{data:null});
+    }
+
+    return res.render("status.ejs",{data:data.rows[0] });
+})
+
 app.get("/status",async(req,res)=>{
-    return res.render("status.ejs");
+    return res.render("status.ejs",{data:null});
 })
 
 
