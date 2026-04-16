@@ -5,9 +5,10 @@ import { Client } from 'pg'
 import ejs from 'ejs';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
-import jsonwebtoken from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
-
+import cookie from 'cookie';
+import cookieParser from 'cookie-parser';
 
 dotenv.config();
 
@@ -16,6 +17,7 @@ const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static("public"));
+app.use(cookieParser()); // Required to parse incoming cookies
 
 const transporter = nodemailer.createTransport({
   host: "smtp.example.com",
@@ -42,30 +44,63 @@ database: process.env.DB_NAME,
 });
 
 await client.connect();
-async function UserLogin(employee_id, password) {
+
+async function checkAuth(req,res,next){
+    const data = req.cookies?.auth_token;
+
+    if(!data){
+        return res.redirect("/");
+
+    }
+
+    
+
+        next();
+
+}
+
+
+
+
+// Pass 'res' so the function can set the cookie
+async function UserLogin(employee_id, password, res) {
     const user = await client.query(
-        "select hashed_password from users where employee_id = $1",
+        "SELECT employee_id, hashed_password FROM users WHERE employee_id = $1",
         [employee_id]
     );
 
-    if (user.rowCount === 0) {
-        return false;
-    }
+    if (user.rowCount === 0) return false;
 
     const isValidPassword = await bcrypt.compare(
         password,
         user.rows[0].hashed_password
     );
 
+    // Only generate token and cookie if password is correct
+    if (isValidPassword) {
+        const token = jwt.sign(
+            { empid: user.rows[0].employee_id }, 
+            process.env.JWT_SECRET
+        );
+
+        res.cookie('auth_token', token, { // Added name 'auth_token'
+            maxAge: 900000,
+            httpOnly: true,
+            secure: true,   
+            sameSite: 'lax'
+        });
+    }
+
     return isValidPassword;
 }
+
 
 
 app.get("/",async(req,res)=>{
     return res.render("login.ejs");
 })
 
-app.get("/new",async(req,res)=>{
+app.get("/new",checkAuth, async(req,res)=>{
     return res.render("new.ejs");
 })
 
@@ -122,7 +157,7 @@ app.post("/login",async(req,res)=>{
 
     const {emp_id,password} = req.body;
 
-    const isAuthenticated = await UserLogin(emp_id, password);
+    const isAuthenticated = await UserLogin(emp_id, password, res);
 
     if (!isAuthenticated) {
         return res.status(401).send("Invalid employee ID or password");
@@ -133,10 +168,7 @@ app.post("/login",async(req,res)=>{
 
 })
 
-app.get("/login",async(req,res)=>{
-
-    
-
+app.get("/login", async(req,res)=>{
     return res.render("login.ejs");
 })
 
