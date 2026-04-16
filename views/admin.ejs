@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <% if(data && data.length>0) { %>
+<ul>
+        <% data.forEach(function(data){ %>
+
+            <li>
+                <%= data.crew_serial_number %> - <%= data.indentor %> - <%= data.status %> (<a href="/manage/<%=data.crew_serial_number%>">Manage</a>)
+            </li>
+        
+        
+        <% }) %>
+    </ul>
+    <% } %>
+</body>
+</html>

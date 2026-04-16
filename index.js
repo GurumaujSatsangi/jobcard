@@ -84,6 +84,17 @@ app.post("/fetch-status",async(req,res)=>{
     return res.render("status.ejs",{data:data.rows[0] });
 })
 
+app.get("/admin",async(req,res)=>{
+    const data = await client.query("select * from applications");
+    return res.render("admin.ejs",{data:data.rows});
+})
+
+app.get("/manage/:id",async(req,res)=>{
+    const data = await client.query("select * from applications where crew_serial_number = $1",[req.params.id]);
+    res.render("manage-applications.ejs",{result: data.rows[0]});
+
+})
+
 app.get("/status",async(req,res)=>{
     return res.render("status.ejs",{data:null});
 })
