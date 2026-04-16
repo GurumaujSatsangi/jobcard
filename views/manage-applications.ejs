@@ -7,12 +7,16 @@
 </head>
 <body>
     <h4><%= result.crew_serial_number %></h4>
-      <select name="indentor">
+    <form action="/assign-technician" method="post">
+    <input type="hidden" value="<%= result.crew_serial_number %>" name="crew_serial_number"> 
+      <select name="assigned_technician">
             <% if (Array.isArray(technician) && technician.length > 0) { %>
             <% technician.forEach(function(technician){ %>
             <option value="<%= technician.technician_name %>"><%= technician.technician_name %> (ID: <%= technician.technician_id %>)</option>
             <% }) %>
             <% } %>
         </select>
+    <input type="submit" value="Assign">
+    </form>
 </body>
 </html>

@@ -96,6 +96,17 @@ app.get("/manage/:id",async(req,res)=>{
 
 })
 
+app.post("/assign-technician",async(req,res)=>{
+    const {assigned_technician, crew_serial_number} = req.body;
+    const data = client.query("update applications set assigned_technician = $1 where crew_serial_number = $2",[assigned_technician,crew_serial_number]);
+
+    if(data){
+        const data2 = client.query("update applications set status = $1 where crew_serial_number = $2",["TECHNICIAN ASSIGNED",crew_serial_number]);
+
+        res.send("Assigned Successfully !");
+    }
+})
+
 app.get("/status",async(req,res)=>{
     return res.render("status.ejs",{data:null});
 })
