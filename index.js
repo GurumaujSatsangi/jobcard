@@ -45,18 +45,33 @@ database: process.env.DB_NAME,
 
 await client.connect();
 
-async function checkAuth(req,res,next){
-    const data = req.cookies?.auth_token;
 
-    if(!data){
+async function checkAuth(req, res, next) {
+    const token = req.cookies?.auth_token;
+
+    // 1. If there's no token at all, send them to login
+    if (!token) {
         return res.redirect("/");
-
     }
 
-    
+    try {
+        // 2. Verify the token and extract the user data
+        // Replace "YOUR_SECRET_KEY" with the actual secret key you used to sign the JWT
+        const decodedUser = jwt.verify(token, process.env.JWT_SECRET);
 
+        // 3. Attach the user data to the request object!
+        // This is the magic step that makes req.user available in your routes
+        req.user = decodedUser;
+
+        // 4. Move on to the next function (e.g., your app.get route)
         next();
-
+        
+    } catch (error) {
+        // If the token is invalid, expired, or tampered with, clear it and redirect
+        console.error("Invalid token:", error.message);
+        res.clearCookie("auth_token");
+        return res.redirect("/");
+    }
 }
 
 
@@ -94,6 +109,15 @@ async function UserLogin(employee_id, password, res) {
     return isValidPassword;
 }
 
+app.get("/delete/:id",checkAuth, async(req,res)=>{
+
+    const data = await client.query("delete from applications where arn = $1 ",[req.params.id]);
+
+    if(data){
+
+    }
+
+})
 
 
 app.get("/",async(req,res)=>{
@@ -102,7 +126,7 @@ app.get("/",async(req,res)=>{
 
 app.get("/new",checkAuth, async(req,res)=>{
 
-    const mysubmissions = await client.query("select * from applications");
+    const mysubmissions = await client.query("select * from applications where indentor=$1",[req.user.employee_id]);
     return res.render("new.ejs",{mysubmissions:mysubmissions.rows});
 })
 
