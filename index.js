@@ -1,17 +1,16 @@
-import express from 'express';
-import bodyParser from 'body-parser';
-import {Session} from 'express-session'
-import { Client } from 'pg'
-import ejs from 'ejs';
-import nodemailer from 'nodemailer';
-import dotenv from 'dotenv';
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
-import cookie from 'cookie';
-import cookieParser from 'cookie-parser';
+import express from "express";
+import bodyParser from "body-parser";
+import { Session } from "express-session";
+import { Client } from "pg";
+import ejs from "ejs";
+import nodemailer from "nodemailer";
+import dotenv from "dotenv";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
+import cookie from "cookie";
+import cookieParser from "cookie-parser";
 
 dotenv.config();
-
 
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -29,190 +28,199 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-
-
-
-const dbHost = process.env.DB_HOST === 'postgres' ? 'localhost' : process.env.DB_HOST;
+const dbHost =
+  process.env.DB_HOST === "postgres" ? "localhost" : process.env.DB_HOST;
 const dbPort = Number(process.env.DB_PORT || 5432);
 
 const client = new Client({
-user: process.env.DB_USER,
-password: process.env.DB_PASSWORD,
-host: dbHost,
-port: dbPort,
-database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  host: dbHost,
+  port: dbPort,
+  database: process.env.DB_NAME,
 });
 
 await client.connect();
 
-
 async function checkAuth(req, res, next) {
-    const token = req.cookies?.auth_token;
+  const token = req.cookies?.auth_token;
 
-    // 1. If there's no token at all, send them to login
-    if (!token) {
-        return res.redirect("/");
-    }
+  if (!token) {
+    return res.redirect("/");
+  }
 
-    try {
-        // 2. Verify the token and extract the user data
-        // Replace "YOUR_SECRET_KEY" with the actual secret key you used to sign the JWT
-        const decodedUser = jwt.verify(token, process.env.JWT_SECRET);
+  try {
+    const decodedUser = jwt.verify(token, process.env.JWT_SECRET);
 
-        // 3. Attach the user data to the request object!
-        // This is the magic step that makes req.user available in your routes
-        req.user = decodedUser;
+    req.user = decodedUser;
 
-        // 4. Move on to the next function (e.g., your app.get route)
-        next();
-        
-    } catch (error) {
-        // If the token is invalid, expired, or tampered with, clear it and redirect
-        console.error("Invalid token:", error.message);
-        res.clearCookie("auth_token");
-        return res.redirect("/");
-    }
+    next();
+  } catch (error) {
+    // If the token is invalid, expired, or tampered with, clear it and redirect
+    console.error("Invalid token:", error.message);
+    res.clearCookie("auth_token");
+    return res.redirect("/");
+  }
 }
-
-
-
 
 // Pass 'res' so the function can set the cookie
 async function UserLogin(employee_id, password, res) {
-    const user = await client.query(
-        "SELECT employee_id, hashed_password FROM users WHERE employee_id = $1",
-        [employee_id]
+  const user = await client.query(
+    "SELECT employee_id, hashed_password FROM users WHERE employee_id = $1",
+    [employee_id],
+  );
+
+  if (user.rowCount === 0) return false;
+
+  const isValidPassword = await bcrypt.compare(
+    password,
+    user.rows[0].hashed_password,
+  );
+
+  // Only generate token and cookie if password is correct
+  if (isValidPassword) {
+    const token = jwt.sign(
+      { empid: user.rows[0].employee_id },
+      process.env.JWT_SECRET,
     );
 
-    if (user.rowCount === 0) return false;
+    res.cookie("auth_token", token, {
+      // Added name 'auth_token'
+      maxAge: 900000,
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+    });
+  }
 
-    const isValidPassword = await bcrypt.compare(
-        password,
-        user.rows[0].hashed_password
-    );
-
-    // Only generate token and cookie if password is correct
-    if (isValidPassword) {
-        const token = jwt.sign(
-            { empid: user.rows[0].employee_id }, 
-            process.env.JWT_SECRET
-        );
-
-        res.cookie('auth_token', token, { // Added name 'auth_token'
-            maxAge: 900000,
-            httpOnly: true,
-            secure: true,   
-            sameSite: 'lax'
-        });
-    }
-
-    return isValidPassword;
+  return isValidPassword;
 }
 
-app.get("/delete/:id",checkAuth, async(req,res)=>{
+app.get("/delete/:id", checkAuth, async (req, res) => {
+  const data = await client.query("delete from applications where arn = $1 ", [
+    req.params.id,
+  ]);
 
-    const data = await client.query("delete from applications where arn = $1 ",[req.params.id]);
+  if (data) {
+  }
+});
 
-    if(data){
+app.get("/", async (req, res) => {
+  return res.render("login.ejs");
+});
 
-    }
+app.get("/home", checkAuth, async (req, res) => {
+  const mysubmissions = await client.query(
+    "select * from applications where indentor=$1",
+    [req.user.employee_id],
+  );
+  return res.render("home.ejs", { mysubmissions: mysubmissions.rows });
+});
 
-})
+app.get("/new/:id", async (req, res) => {
+  const data = await client.query(
+    "select * from ac_database where crew_serial_number=$1",
+    [req.params.id],
+  );
 
+  res.render("new-application.ejs", { result: data.rows[0] });
+});
 
-app.get("/",async(req,res)=>{
-    return res.render("login.ejs");
-})
+app.post("/fetch-ac-details", async (req, res) => {
+  const { crew_serial_number } = req.body;
+  const data = await client.query(
+    "select * from ac_database where crew_serial_number=$1",
+    [crew_serial_number],
+  );
+  if (data.rowCount === 0) {
+    return res
+      .status(404)
+      .send("No AC record found for that crew serial number.");
+  }
 
-app.get("/new",checkAuth, async(req,res)=>{
+  console.log(data.rows[0]);
+  return res.render("new-application.ejs", { result: data.rows[0] });
+});
 
-    const mysubmissions = await client.query("select * from applications where indentor=$1",[req.user.employee_id]);
-    return res.render("new.ejs",{mysubmissions:mysubmissions.rows});
-})
+app.post("/submit-new-application", async (req, res) => {
+  const { indentor, crew_serial_number } = req.body;
+  const data = await client.query(
+    "insert into applications (indentor, crew_serial_number, status) values($1,$2,$3)",
+    [indentor, crew_serial_number, "APPLICATION SUBMITTED"],
+  );
 
-app.get("/new/:id",async(req,res)=>{
-    const data = await client.query("select * from ac_database where crew_serial_number=$1",[req.params.id]);
+  if (data) {
+    return res.send("Submitted Succesfully !");
+  }
+});
 
-    res.render("new-application.ejs",{result: data.rows[0]});
-})
+app.post("/fetch-status", async (req, res) => {
+  const { crew_serial_number } = req.body;
+  const data = await client.query(
+    "select * from applications where crew_serial_number=$1",
+    [crew_serial_number],
+  );
+  if (data.rowCount === 0) {
+    return res.render("status.ejs", { data: null });
+  }
 
-app.post("/fetch-ac-details",async(req,res)=>{
-    const {crew_serial_number}= req.body;
-    const data = await client.query("select * from ac_database where crew_serial_number=$1",[crew_serial_number]);
-    if (data.rowCount === 0) {
-        return res.status(404).send("No AC record found for that crew serial number.");
-    }
+  return res.render("status.ejs", { data: data.rows[0] });
+});
 
-    console.log(data.rows[0]);
-    return res.render("new-application.ejs",{result:data.rows[0]});
+app.get("/admin", async (req, res) => {
+  const data = await client.query("select * from applications");
+  return res.render("admin.ejs", { data: data.rows });
+});
 
-})
+app.get("/manage/:id", async (req, res) => {
+  const data = await client.query(
+    "select * from applications where crew_serial_number = $1",
+    [req.params.id],
+  );
+  const technician = await client.query("select * from technicians");
+  res.render("manage-applications.ejs", {
+    result: data.rows[0],
+    technician: technician.rows,
+  });
+});
 
-app.post("/submit-new-application",async(req,res)=>{
-    const {indentor, crew_serial_number} = req.body;
-    const data = await client.query("insert into applications (indentor, crew_serial_number, status) values($1,$2,$3)",[indentor,crew_serial_number,"APPLICATION SUBMITTED"]);
+app.post("/login", async (req, res) => {
+  const { emp_id, password } = req.body;
 
-    if(data){
-        return res.send("Submitted Succesfully !");
-    }
-})
+  const isAuthenticated = await UserLogin(emp_id, password, res);
 
-app.post("/fetch-status",async(req,res)=>{
-    const {crew_serial_number} = req.body;
-    const data = await client.query("select * from applications where crew_serial_number=$1",[crew_serial_number]);
-    if (data.rowCount === 0) {
-        return res.render("status.ejs",{data:null});
-    }
+  if (!isAuthenticated) {
+    return res.status(401).send("Invalid employee ID or password");
+  }
 
-    return res.render("status.ejs",{data:data.rows[0] });
-})
+  return res.redirect("/home");
+});
 
-app.get("/admin",async(req,res)=>{
-    const data = await client.query("select * from applications");
-    return res.render("admin.ejs",{data:data.rows});
-})
+app.get("/login", async (req, res) => {
+  return res.render("login.ejs");
+});
 
-app.get("/manage/:id",async(req,res)=>{
-    const data = await client.query("select * from applications where crew_serial_number = $1",[req.params.id]);
-    const technician = await client.query("select * from technicians");
-    res.render("manage-applications.ejs",{result: data.rows[0], technician: technician.rows});
+app.post("/assign-technician", async (req, res) => {
+  const { assigned_technician, crew_serial_number } = req.body;
+  const data = client.query(
+    "update applications set assigned_technician = $1 where crew_serial_number = $2",
+    [assigned_technician, crew_serial_number],
+  );
 
-})
+  if (data) {
+    const data2 = client.query(
+      "update applications set status = $1 where crew_serial_number = $2",
+      ["TECHNICIAN ASSIGNED", crew_serial_number],
+    );
 
-app.post("/login",async(req,res)=>{
+    res.send("Assigned Successfully !");
+  }
+});
 
-    const {emp_id,password} = req.body;
+app.get("/status", async (req, res) => {
+  return res.render("status.ejs", { data: null });
+});
 
-    const isAuthenticated = await UserLogin(emp_id, password, res);
-
-    if (!isAuthenticated) {
-        return res.status(401).send("Invalid employee ID or password");
-    }
-
-    return res.redirect("/new");
-
-
-})
-
-app.get("/login", async(req,res)=>{
-    return res.render("login.ejs");
-})
-
-app.post("/assign-technician",async(req,res)=>{
-    const {assigned_technician, crew_serial_number} = req.body;
-    const data = client.query("update applications set assigned_technician = $1 where crew_serial_number = $2",[assigned_technician,crew_serial_number]);
-
-    if(data){
-        const data2 = client.query("update applications set status = $1 where crew_serial_number = $2",["TECHNICIAN ASSIGNED",crew_serial_number]);
-
-        res.send("Assigned Successfully !");
-    }
-})
-
-app.get("/status",async(req,res)=>{
-    return res.render("status.ejs",{data:null});
-})
-
-app.listen(3000,async()=>{
-    console.log("Running on Port 3000!");
-})
+app.listen(3000, async () => {
+  console.log("Running on Port 3000!");
+});

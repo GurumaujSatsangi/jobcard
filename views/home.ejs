@@ -4,12 +4,69 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
-    <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css">
+
 </head>
 <body>
-   <ul>
-    <li><a href="/new">New Job Card Application</a></li>
-    <li><a href="/status">Check Job Card Application Status</a></li>
-   </ul>
+    <%- include('partials/navbar.ejs') %>
+  <div class="container">
+
+    <h4>Submit New Application</h4><hr>
+
+    <h4>My Applications</h4><hr>
+
+    <% if(mysubmissions && mysubmissions.length>0) { %>
+
+      <table class="table">
+
+        <tr>
+          <th>Application Reference Number</th>
+          <th>Section</th>
+          <th>CREW Serial Number</th>
+          <th>Description</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+
+      <% mysubmissions.forEach(function(mysubmissions){ %>
+      <tr>
+        <td>
+<%= mysubmissions.arn %>
+        </td>
+        <td>
+<%= mysubmissions.arn %>
+
+        </td>
+        <td><%= mysubmissions.crew_serial_number %>
+
+
+        </td>
+        <td>
+<%= mysubmissions.description %>
+
+        </td>
+         <td>
+              <%= mysubmissions.status %>
+
+
+                </td>
+                <td>
+                  <a href="/delete/<%= mysubmissions.arn %>" class="btn btn-danger">Delete</a>
+                </td>
+      </tr>
+      
+      <% }) %>
+      </table>
+    
+    <% } else { %>
+
+      <h6>No Applications Found!</h6>
+
+      <% } %>
+
+  </div>
+
+    <%- include('partials/footer') %>
+  
 </body>
 </html>
