@@ -114,7 +114,9 @@ app.get("/home", checkAuth, async (req, res) => {
     "select * from applications where indentor=$1",
     [req.user.employee_id],
   );
-  return res.render("home.ejs", { mysubmissions: mysubmissions.rows });
+
+  const myacs = await client.query("select * from ac_database where $1=any(assigned_to)",[req.user.employee_id]);
+  return res.render("home.ejs", { mysubmissions: mysubmissions.rows , myacs:myacs.rows});
 });
 
 app.get("/new/:id", async (req, res) => {

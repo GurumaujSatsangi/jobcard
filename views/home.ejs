@@ -13,6 +13,29 @@
 
     <h4>Submit New Application</h4><hr>
 
+    <% if(myacs && myacs.length>0){ %>
+
+      <% myacs.forEach(function(myacs){ %>
+      
+      
+  <div class="card">
+  <div class="card-body">
+    <h5 class="card-title"><%= myacs.crew_serial_number %></h5>
+    <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+    <button type="button" class="btn btn-primary" data-mdb-ripple-init>Button</button>
+  </div>
+</div>
+      <% }) %>
+    
+    
+    <% } else { %>
+      <p class="small">No Air Conditioners Assigned to You!</p>
+
+      <% } %>
+
+
+
+<hr>
     <h4>My Applications</h4><hr>
 
     <% if(mysubmissions && mysubmissions.length>0) { %>
@@ -60,7 +83,7 @@
     
     <% } else { %>
 
-      <h6>No Applications Found!</h6>
+      <p class="small">No Applications Found!</p>
 
       <% } %>
 
