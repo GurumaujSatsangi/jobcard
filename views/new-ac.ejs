@@ -9,6 +9,9 @@
 <body>
     <%- include('partials/navbar') %>
     <div class="container">
+<% if (!result) { %>
+<p><%= error || 'No AC record found.' %></p>
+<% } else { %>
 <table class="table">
     <tr>
         <th>CREW Serial Number</th>
@@ -43,6 +46,7 @@
 
         <input class="btn btn-primary" type="submit" value="Submit">
     </form>
+<% } %>
     </div>
     <%- include('partials/footer') %>
 </body>

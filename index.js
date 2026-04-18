@@ -135,8 +135,19 @@ app.get("/new/:id", checkAuth, async (req, res) => {
     [req.params.id],
   );
 
-  res.render("new-application.ejs", { result: data.rows[0] });
+  if (data.rowCount === 0) {
+    return res.status(404).render("new-ac.ejs", {
+      result: null,
+      error: "No AC record found for that crew serial number.",
+    });
+  }
+
+  return res.render("new-ac.ejs", { result: data.rows[0] });
 });
+
+app.get("/new/glass-blowing-section",checkAuth,async(req,res)=>{
+  return res.render("new-gbs.ejs");
+})
 
 app.post("/fetch-ac-details", async (req, res) => {
   const { crew_serial_number } = req.body;
@@ -151,7 +162,7 @@ app.post("/fetch-ac-details", async (req, res) => {
   }
 
   console.log(data.rows[0]);
-  return res.render("new-application.ejs", { result: data.rows[0] });
+  return res.render("new-ac.ejs", { result: data.rows[0] });
 });
 
 app.post("/submit-new-application", async (req, res) => {
