@@ -56,7 +56,6 @@ async function checkAuth(req, res, next) {
 
     next();
   } catch (error) {
-    // If the token is invalid, expired, or tampered with, clear it and redirect
     console.error("Invalid token:", error.message);
     res.clearCookie("auth_token");
     return res.redirect("/");
@@ -102,6 +101,7 @@ app.get("/delete/:id", checkAuth, async (req, res) => {
   ]);
 
   if (data) {
+    return res.redirect("/home");
   }
 });
 
@@ -110,16 +110,26 @@ app.get("/", async (req, res) => {
 });
 
 app.get("/home", checkAuth, async (req, res) => {
+  const employeeId = req.user.empid ?? req.user.employee_id;
+
+  if (!employeeId) {
+    res.clearCookie("auth_token");
+    return res.redirect("/");
+  }
+
   const mysubmissions = await client.query(
     "select * from applications where indentor=$1",
-    [req.user.employee_id],
+    [employeeId],
   );
 
-  const myacs = await client.query("select * from ac_database where $1=any(assigned_to)",[req.user.employee_id]);
+  const myacs = await client.query(
+    "select * from ac_database where $1=any(assigned_to)",
+    [employeeId],
+  );
   return res.render("home.ejs", { mysubmissions: mysubmissions.rows , myacs:myacs.rows});
 });
 
-app.get("/new/:id", async (req, res) => {
+app.get("/new/:id", checkAuth, async (req, res) => {
   const data = await client.query(
     "select * from ac_database where crew_serial_number=$1",
     [req.params.id],
