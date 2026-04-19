@@ -9,6 +9,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import cookie from "cookie";
 import cookieParser from "cookie-parser";
+import crypto from "node:crypto";
 
 dotenv.config();
 
@@ -138,7 +139,7 @@ app.get("/new/:id", checkAuth, async (req, res) => {
   );
 
   const availability_check = await client.query("select * from applications where crew_serial_number = $1 and status!=$2",[req.params.id,"COMPLETED"]);
-  if(availability_check){
+  if(availability_check.rows[0]){
     return res.render("message.ejs",{message:"A Job Card Application for this Air Conditioner is already ACTIVE and has not been marked as COMPLETED. If you think this is an error, please reach out to us at onlinejobcard@iacs.res.in"});
 
   }
@@ -176,10 +177,13 @@ app.post("/fetch-ac-details", async (req, res) => {
 });
 
 app.post("/submit-new-application", async (req, res) => {
-  const { indentor, crew_serial_number } = req.body;
+  const { indentor, crew_serial_number, section} = req.body;
+
+  const arn = crypto.randomUUID();
+
   const data = await client.query(
-    "insert into applications (indentor, crew_serial_number, status) values($1,$2,$3)",
-    [indentor, crew_serial_number, "APPLICATION SUBMITTED"],
+    "insert into applications (arn, indentor, crew_serial_number, status) values ($1, $2, $3, $4)",
+    [arn, indentor, crew_serial_number, "APPLICATION SUBMITTED"],
   );
 
   if (data) {
