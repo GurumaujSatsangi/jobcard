@@ -137,6 +137,12 @@ app.get("/new/:id", checkAuth, async (req, res) => {
     [req.params.id],
   );
 
+  const availability_check = await client.query("select * from applications where crew_serial_number = $1 and status!=$2",[req.params.id,"COMPLETED"]);
+  if(availability_check){
+    return res.render("message.ejs",{message:"A Job Card Application for this Air Conditioner is already ACTIVE and has not been marked as COMPLETED. If you think this is an error, please reach out to us at onlinejobcard@iacs.res.in"});
+
+  }
+
   const decodedUser = req.user
 
   if (data.rowCount === 0) {
@@ -201,7 +207,7 @@ app.get("/admin", async (req, res) => {
 
 app.get("/manage/:id", async (req, res) => {
   const data = await client.query(
-    "select * from applications where crew_serial_number = $1",
+    "select * from applications where arn = $1",
     [req.params.id],
   );
   const technician = await client.query("select * from technicians");

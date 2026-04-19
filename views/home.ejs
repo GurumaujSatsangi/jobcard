@@ -10,6 +10,11 @@
 <body>
     <%- include('partials/navbar.ejs') %>
   <div class="container">
+    <% if(message) { %>
+
+      <span class="badge badge-danger"><%= message %></span>
+    
+    <% } %>
 
     <h4>Submit New Application</h4><hr>
 <h5>Air Condtioning & Refrigeration Section</h5>
