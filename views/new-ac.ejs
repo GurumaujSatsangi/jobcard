@@ -35,11 +35,13 @@
 
         <hr>
     <form action="/submit-new-application" method="post">
+                <input type="hidden" name="indentor" value="<%= decodedUser.employee_id %>">
+
 
         <input type="hidden" name="crew_serial_number" value="<%= result.crew_serial_number%>">
 
 <div class="form-outline" data-mdb-input-init>
-  <textarea placeholder="Describe your Issue" class="form-control" id="textAreaExample" rows="4"></textarea>
+  <textarea name="description" placeholder="Describe your Issue" class="form-control" id="textAreaExample" rows="4"></textarea>
   <label class="form-label" for="textAreaExample">Message</label>
 </div>
         </textarea>

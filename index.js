@@ -79,7 +79,9 @@ async function UserLogin(employee_id, password, res) {
   // Only generate token and cookie if password is correct
   if (isValidPassword) {
     const token = jwt.sign(
-      { empid: user.rows[0].employee_id },
+      {
+        employee_id: user.rows[0].employee_id,
+      },
       process.env.JWT_SECRET,
     );
 
@@ -135,6 +137,8 @@ app.get("/new/:id", checkAuth, async (req, res) => {
     [req.params.id],
   );
 
+  const decodedUser = req.user
+
   if (data.rowCount === 0) {
     return res.status(404).render("new-ac.ejs", {
       result: null,
@@ -142,7 +146,7 @@ app.get("/new/:id", checkAuth, async (req, res) => {
     });
   }
 
-  return res.render("new-ac.ejs", { result: data.rows[0] });
+  return res.render("new-ac.ejs", { result: data.rows[0], decodedUser });
 });
 
 app.get("/new/glass-blowing-section",checkAuth,async(req,res)=>{

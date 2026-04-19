@@ -7,17 +7,46 @@
     <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
+
+    <%- include('partials/navbar') %>
+
+
+    <div class="container">
+        <h4>Manage Job Card Applications</h4><hr>
     <% if(data && data.length>0) { %>
-<ul>
+<table class="table">
+    <tr>
+        <th>ARN</th>
+        <th>SECTION</th>
+        <th>INDENTOR</th>
+        <th>STATUS</th>
+        <th>ACTION</th>
+    </tr>
+
         <% data.forEach(function(data){ %>
 
-            <li>
-                <%= data.crew_serial_number %> - <%= data.indentor %> - <%= data.status %> (<a href="/manage/<%=data.crew_serial_number%>">Manage</a>)
-            </li>
-        
-        
+         <tr>
+            <td><%= data.arn %></td>
+            <td><%= data.section %></td>
+            <td><%= data.indentor %></td>
+            <td><%= data.status %></td>
+            <td><a class="btn btn-primary" href="/manage/<%= data.arn %>">Manage</a></td>
+
+
+
+
+         </tr>
+        </table>
         <% }) %>
     </ul>
-    <% } %>
+    <% } else { %>
+
+        <p class="small">No Job Card Applications Found!</p>
+
+        <% } %>
+    </div>
+
+        <%- include('partials/footer') %>
+
 </body>
 </html>
