@@ -177,13 +177,13 @@ app.post("/fetch-ac-details", async (req, res) => {
 });
 
 app.post("/submit-new-application", async (req, res) => {
-  const { indentor, crew_serial_number, section} = req.body;
+  const { indentor, crew_serial_number, section, description} = req.body;
 
   const arn = crypto.randomUUID();
 
   const data = await client.query(
-    "insert into applications (arn, indentor, crew_serial_number, status) values ($1, $2, $3, $4)",
-    [arn, indentor, crew_serial_number, "APPLICATION SUBMITTED"],
+    "insert into applications (arn, indentor, crew_serial_number, status, description) values ($1, $2, $3, $4,$5)",
+    [arn, indentor, crew_serial_number, "APPLICATION SUBMITTED",description],
   );
 
   if (data) {
