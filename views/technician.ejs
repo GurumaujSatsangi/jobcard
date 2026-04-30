@@ -26,8 +26,12 @@
 <tr>
     <td><%= applications.crew_serial_number %></td>
     <td><%= applications.status %></td>
-    <td><a class="btn btn-primary" href="">Update</a>
-    <a class="btn btn-danger" href="">Report</a></td>
+    <td><form action="/update/<%= applications.arn %>" method="post">
+
+        <input class="form-control" type="file" name="receipt"><br>
+        <input type="submit" class="btn btn-primary" value="Update">
+    </form>
+    </td>
 
 </tr>
 
@@ -42,6 +46,9 @@
 
 
     </div>
+
+
+
     <%- include('partials/footer') %>
 </body>
 </html>

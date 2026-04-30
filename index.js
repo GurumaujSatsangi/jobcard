@@ -197,6 +197,11 @@ app.get("/technician",async(req,res)=>{
   return res.render("technician.ejs",{applications: applications.rows});
 })
 
+app.post("/update/:id",async(req,res)=>{
+  const {arn} = req.body;
+  const data = await client.query("update applications set status=$1 where arn=$2","COMPLETED",arn)
+})
+
 app.post("/fetch-status", async (req, res) => {
   const { crew_serial_number } = req.body;
   const data = await client.query(
