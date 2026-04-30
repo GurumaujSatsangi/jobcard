@@ -191,6 +191,12 @@ app.post("/submit-new-application", async (req, res) => {
   }
 });
 
+app.get("/technician",async(req,res)=>{
+
+  const applications = await client.query("select * from applications")
+  return res.render("technician.ejs",{applications: applications.rows});
+})
+
 app.post("/fetch-status", async (req, res) => {
   const { crew_serial_number } = req.body;
   const data = await client.query(
