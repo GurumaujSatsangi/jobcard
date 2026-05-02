@@ -63,6 +63,27 @@ async function checkAuth(req, res, next) {
   }
 }
 
+
+async function checkTechAuth(req, res, next) {
+  const token = req.cookies?.tech_auth_token;
+
+  if (!token) {
+    return res.redirect("/login/technician");
+  }
+
+  try {
+    const decodedUser = jwt.verify(token, process.env.JWT_SECRET);
+
+    req.user = decodedUser;
+
+    next();
+  } catch (error) {
+    console.error("Invalid token:", error.message);
+    res.clearCookie("tech_auth_token");
+    return res.redirect("/login/technician");
+  }
+}
+
 // Pass 'res' so the function can set the cookie
 async function UserLogin(employee_id, password, res) {
   const user = await client.query(
@@ -97,6 +118,44 @@ async function UserLogin(employee_id, password, res) {
 
   return isValidPassword;
 }
+
+
+async function TechnicianLogin(technician_id, password, res) {
+  const user = await client.query(
+    "SELECT * FROM technicians WHERE technician_id = $1",
+    [technician_id],
+  );
+
+  if (user.rowCount === 0) return false;
+
+  const isValidPassword = await bcrypt.compare(
+    password,
+    user.rows[0].hashed_password,
+  );
+
+  // Only generate token and cookie if password is correct
+  if (isValidPassword) {
+    const token = jwt.sign(
+      {
+        technician_id: user.rows[0].technician_id,
+        technician_name:user.rows[0].technician_name,
+      },
+      process.env.JWT_SECRET,
+    );
+
+    res.cookie("tech_auth_token", token, {
+      // Added name 'auth_token'
+      maxAge: 900000,
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+    });
+  }
+
+  return isValidPassword;
+}
+
+
 
 app.get("/delete/:id", checkAuth, async (req, res) => {
   const data = await client.query("delete from applications where arn = $1 ", [
@@ -191,9 +250,19 @@ app.post("/submit-new-application", async (req, res) => {
   }
 });
 
-app.get("/technician",async(req,res)=>{
 
-  const applications = await client.query("select * from applications")
+app.get("/login/technician", async(req,res)=>{
+
+  return res.render("technician-login.ejs");
+})
+
+app.get("/technician/dashboard",checkTechAuth, async(req,res)=>{
+  const technicianName = req.user?.technician_name;
+
+  const applications = await client.query(
+    "select * from applications where assigned_technician = $1",
+    [technicianName],
+  );
   return res.render("technician.ejs",{applications: applications.rows});
 })
 
@@ -201,6 +270,25 @@ app.post("/update/:id",async(req,res)=>{
   const {arn} = req.body;
   const data = await client.query("update applications set status=$1 where arn=$2","COMPLETED",arn)
 })
+
+app.post("/technician-login", async(req,res)=>{
+
+const {technician_id, password } = req.body;
+
+  const isAuthenticated = await TechnicianLogin(technician_id,password, res);
+
+  if (!isAuthenticated) {
+    return res.status(401).send("Invalid Password");
+  }
+
+  return res.redirect("/technician/dashboard");
+
+});
+
+
+
+
+
 
 app.post("/fetch-status", async (req, res) => {
   const { crew_serial_number } = req.body;
