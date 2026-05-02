@@ -204,8 +204,9 @@ app.get("/new/glass-blowing-section",checkAuth,async(req,res)=>{
 app.post("/submit-gbs-application/:id",checkAuth,async(req,res)=>{
   const {description} = req.body;
   const arn = crypto.randomUUID();
+  const section="GLASS BLOWING SECTION"
 
-  const data = await client.query("insert into applications(arn, indentor, crew_serial_number,status, description) values($1,$2, $3, $4, $5)",[arn,req.params.id,"N.A.","APPLICATION SUBMITTED",description]);
+  const data = await client.query("insert into applications(arn, indentor, crew_serial_number,status, description,section) values($1,$2, $3, $4, $5,$6)",[arn,req.params.id,"N.A.","APPLICATION SUBMITTED",description,"GLASS BLOWING SECTION"]);
 
   if(data){
     return res.render("message.ejs",{message:"APPLICATION SUBMITTED SUCCESSFULLY !"})
