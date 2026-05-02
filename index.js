@@ -336,17 +336,18 @@ app.get("/login", async (req, res) => {
   return res.render("login.ejs");
 });
 
-app.post("/assign-technician", async (req, res) => {
-  const { assigned_technician, crew_serial_number } = req.body;
+app.post("/assign-technician/:id", async (req, res) => {
+  const { assigned_technician } = req.body;
+  const arn = req.params.id;
   const data = client.query(
-    "update applications set assigned_technician = $1 where crew_serial_number = $2",
-    [assigned_technician, crew_serial_number],
+    "update applications set assigned_technician = $1 where arn = $2",
+    [assigned_technician, arn],
   );
 
   if (data) {
     const data2 = client.query(
-      "update applications set status = $1 where crew_serial_number = $2",
-      ["TECHNICIAN ASSIGNED", crew_serial_number],
+      "update applications set status = $1 where arn = $2",
+      ["TECHNICIAN ASSIGNED", arn],
     );
 
     res.send("Assigned Successfully !");

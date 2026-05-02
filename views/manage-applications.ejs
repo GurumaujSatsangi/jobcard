@@ -12,7 +12,22 @@
     <%- include('partials/navbar') %>
      
     <div class="container">
-    <h5 style="color:red;">APPLICATION REFERENCE NUMBER: <%= result.arn %></h5>
+        <table class="table">
+            <tr>
+                <th><h5>APPLICATION REFERENCE NUMBER</h5></th>
+                <th><h5>STATUS</h5></th>
+            </tr>
+            <tr>
+                <th><h5 style="color:blue;"><%= result.arn %></h5></th>
+                <th>
+                    <% if(result.status=="APPLICATION SUBMITTED") { %>
+                        <h5 style="color:red">APPLICATION SUBMITTED</h5>
+                    <% } else if(result.status=="TECHNICIAN ASSIGNED"){ %>
+                        <h5 style="color:blue">TECHNICIAN ASSIGNED</h5>
+                    <% } %>
+                </th>
+            </tr>
+        </table>
     <table class="table">
         <tr>
             <th>SECTION</th>
@@ -29,13 +44,8 @@
             <td><%= result.amc %></td>
         </tr>
 
-
-       
-
-
     </table>
-    <form action="/assign-technician" method="post">
-    <input type="hidden" value="<%= result.crew_serial_number %>" name="crew_serial_number"> 
+    <form action="/assign-technician/<%= result.arn %>" method="post">
       <select name="assigned_technician">
             <% if (Array.isArray(technician) && technician.length > 0) { %>
             <% technician.forEach(function(technician){ %>
