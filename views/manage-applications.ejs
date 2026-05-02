@@ -5,19 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
     <link rel="stylesheet" href="/styles.css">
+    
 </head>
 <body>
-    <h4><%= result.crew_serial_number %></h4>
+
+    <%- include('partials/navbar') %>
+     
+    <div class="container">
+    <h5 style="color:red;">APPLICATION REFERENCE NUMBER: <%= result.arn %></h5>
+    <table class="table">
+        <tr>
+            <th>SECTION</th>
+            <th>CREW SERIAL NUMBER</th>
+            <th>INDENTOR</th>
+            <th>DESCRIPTION</th>
+            <th>AMC DETAILS</th>
+        </tr>
+        <tr>
+            <td><%= result.section %></td>
+            <td><%= result.crew_serial_number %></td>
+            <td><%= result.indentor %></td>
+            <td><%= result.description %></td>
+            <td><%= result.amc %></td>
+        </tr>
+
+
+       
+
+
+    </table>
     <form action="/assign-technician" method="post">
     <input type="hidden" value="<%= result.crew_serial_number %>" name="crew_serial_number"> 
       <select name="assigned_technician">
             <% if (Array.isArray(technician) && technician.length > 0) { %>
             <% technician.forEach(function(technician){ %>
-            <option value="<%= technician.technician_name %>"><%= technician.technician_name %> (ID: <%= technician.technician_id %>)</option>
+            <option class="form-control" value="<%= technician.technician_name %>"><%= technician.technician_name %> (ID: <%= technician.technician_id %>)</option>
             <% }) %>
             <% } %>
         </select>
-    <input type="submit" value="Assign">
+    <input class="btn btn-primary" type="submit" value="Assign">
     </form>
+
+    </div>
+    <%-include('partials/footer') %>
 </body>
 </html>
