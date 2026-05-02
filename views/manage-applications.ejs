@@ -24,7 +24,13 @@
                         <h5 style="color:red">APPLICATION SUBMITTED</h5>
                     <% } else if(result.status=="TECHNICIAN ASSIGNED"){ %>
                         <h5 style="color:blue">TECHNICIAN ASSIGNED</h5>
+                    <% } else if(result.status=="MATERIAL ISSUED BY STORE IN-CHARGE"){%>
+
+                        <h5 style="color:yellow">MATERIAL ISSUED BY STORE IN-CHARGE</h5>
+                    <% } else if(result.status=="COMPLETED"){%>
+                        <h5 style="color:green">COMPLETED</h5>
                     <% } %>
+                        
                 </th>
             </tr>
         </table>
@@ -53,7 +59,7 @@
             <% }) %>
             <% } %>
         </select>
-    <input class="btn btn-primary" type="submit" value="Assign">
+    <input class="btn btn-primary" type="submit" value="Assign Technician">
     </form>
 
     </div>

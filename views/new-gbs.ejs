@@ -3,12 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/styles.css">
     <title>Document</title>
 </head>
 <body>
     <%- include('partials/navbar') %>
     <div class="container">
-        <h4>Glass Blowing Section</h4>
+        <h4>Glass Blowing Section</h4><hr>
+
+        <form action="/submit-gbs-application/<%= user.emp_id %>" method="post">
+            <textarea required class="form-control" name="description"></textarea>
+           <br> <button type="submit" class="btn btn-primary">Submit</button>
+        </form> 
     </div>
     <%- include('partials/footer') %>
     

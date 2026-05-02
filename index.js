@@ -191,6 +191,27 @@ app.get("/home", checkAuth, async (req, res) => {
   return res.render("home.ejs", { mysubmissions: mysubmissions.rows , myacs:myacs.rows});
 });
 
+app.get("/new/glass-blowing-section",checkAuth,async(req,res)=>{
+
+  const user = {
+    ...req.user,
+    emp_id: req.user.emp_id ?? req.user.empid ?? req.user.employee_id,
+  };
+
+  return res.render("new-gbs.ejs",{user});
+})
+
+app.post("/submit-gbs-application/:id",checkAuth,async(req,res)=>{
+  const {description} = req.body;
+  const arn = crypto.randomUUID();
+
+  const data = await client.query("insert into applications(arn, indentor, crew_serial_number,status, description) values($1,$2, $3, $4, $5)",[arn,req.params.id,"N.A.","APPLICATION SUBMITTED",description]);
+
+  if(data){
+    return res.render("message.ejs",{message:"APPLICATION SUBMITTED SUCCESSFULLY !"})
+  }
+})
+
 app.get("/new/:id", checkAuth, async (req, res) => {
   const data = await client.query(
     "select * from ac_database where crew_serial_number=$1",
@@ -214,10 +235,6 @@ app.get("/new/:id", checkAuth, async (req, res) => {
 
   return res.render("new-ac.ejs", { result: data.rows[0], decodedUser });
 });
-
-app.get("/new/glass-blowing-section",checkAuth,async(req,res)=>{
-  return res.render("new-gbs.ejs");
-})
 
 app.post("/fetch-ac-details", async (req, res) => {
   const { crew_serial_number } = req.body;
