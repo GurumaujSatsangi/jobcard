@@ -213,12 +213,25 @@ app.post("/submit-gbs-application/:id",checkAuth,async(req,res)=>{
   }
 })
 
+app.get("/store/dashboard/new-item",async(req,res)=>{
+
+  return res.render("add-new-item.ejs");
+
+})
+
+app.get("/store/dashboard/new-inventory-record",async(req,res)=>{
+
+  return res.render("new-inventory-record.ejs");
+
+})
 
 app.get("/store/dashboard",async(req,res)=>{
 
+  const items = await client.query("select * from items");
+
   const applications = await client.query("select * from applications where status=$1",["TECHNICIAN ASSIGNED"]);
 
-  return res.render("store.ejs",{applications:applications.rows});
+  return res.render("store.ejs",{items:items.rows, applications:applications.rows});
 })
 
 app.get("/issue/:id",async(req,res)=>{
@@ -368,11 +381,15 @@ app.get("/admin", async (req, res) => {
 
 app.get("/manage/:id", async (req, res) => {
   const data = await client.query(
-    "select * from applications where arn = $1",
-    [req.params.id],
+    "select * from applications where arn = $1 and status = $2",
+    [req.params.id,"TECHNICIAN ASSIGNED"],
   );
+
+  if(!data.rows[0]){
+    return res.render("message.ejs",{message:"ARN NOT ELIGIBLE !"})
+  }
   const technician = await client.query("select * from technicians");
-  res.render("manage-applications.ejs", {
+  return res.render("manage-applications.ejs", {
     result: data.rows[0],
     technician: technician.rows,
   });
@@ -408,7 +425,7 @@ app.post("/assign-technician/:id", async (req, res) => {
       ["TECHNICIAN ASSIGNED", arn],
     );
 
-    res.send("Assigned Successfully !");
+    return res.render("message.ejs",{message:"TECHNICIAN ASSIGNED !"});
   }
 });
 
