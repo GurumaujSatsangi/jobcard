@@ -234,6 +234,18 @@ app.post("/issue-item/:id",async(req,res)=>{
   
   const {item} = req.body;
 
+  const match = item.match(/\((.+)\)/);
+
+  if (match) {
+  console.log(match[1]); 
+  }
+
+  const data3= await client.query("select qty from items where item_code = $1",[match[1]]);
+
+  const updated_qty = data3.rows[0].qty - match[1];
+
+  const data4 = await client.query("update items set qty = $1 where item_code = $2",[updated_qty,match[1]]);
+
   const data = await client.query("update applications set material_issued = $1, status=$2",[item,"MATERIAL ISSUED BY STORE IN-CHARGE"]);
 
   if(data.rows[0]){
