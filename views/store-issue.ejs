@@ -12,6 +12,51 @@
     <div class="container">
         <h4>Store In-Charge Panel</h4><hr>
 
+        <form action="/issue-item/<%= applications.arn %>" method="post">
+
+            <table>
+                <tr>
+                    <th>ARN</th>
+                    <th>INDENTOR</th>
+                    <th>ASSIGNED TECHNICIAN</th>
+                    <th>DESCRIPTION</th>
+                    <th>STATUS</th>
+                </tr>
+                <tr>
+                    <td><%=applications.arn %></td>
+                    <td><%= applications.indentor%></td>
+                    <td><%= applications.assigned_technician%></td>
+                    <td><%= applications.description %></td>
+                    <td><%= applications.status%></td>
+                </tr>
+                <tr>
+
+                    <% if(items && items.length>0){ %>
+
+                         <select name="item" class="form-control">
+
+                            <% items.forEach(function(items){ %>
+
+                                <option value="<%=items.item_code %>"><%= items.item_name %>(<%= items.item_code %>)</option>
+                            
+                            <% }) %>
+
+                    </select>
+<br>
+                    <button class="btn btn-primary" type="submit">Issue</button>
+                    
+                    
+                    <% } else { %>
+
+                        <p class="small">No Items Found! This might be a Database Error, please contact System Adminstrator (<a href="mailto:onlinejobcard@iacs.res.in">onlinejobcard@iacs.res.in</a>).</p>
+                    
+                    <% } %>
+                   
+
+                </tr>
+            </table>
+        </form>
+
     </div>
 
 

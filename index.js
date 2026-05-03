@@ -224,9 +224,9 @@ app.get("/store/dashboard",async(req,res)=>{
 app.get("/issue/:id",async(req,res)=>{
   const items = await client.query("select * from items");
 
-  const applications = await client.query("select * from applications where arn=$1 and status=$1",[req.params.id,"TECHNICIAN ASSIGNED"]);
+  const applications = await client.query("select * from applications where arn=$1 and status=$2",[req.params.id,"TECHNICIAN ASSIGNED"]);
 
-  return res.render("store-issue.ejs",{items:items.rows,applications:applications.rows});
+  return res.render("store-issue.ejs",{items:items.rows,applications:applications.rows[0]});
 
 })
 
