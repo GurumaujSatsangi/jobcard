@@ -17,6 +17,7 @@
 
     <table class="table">
         <tr>
+            <th>ARN</th>
             <th>CREW Serial Number</th>
             <th>Status</th>
             <th>Action</th>
@@ -24,8 +25,17 @@
 <% applications.forEach(function(applications){ %>
 
 <tr>
+    <td><%= applications.arn %></td>
     <td><%= applications.crew_serial_number %></td>
-    <td><%= applications.status %></td>
+    <td><%= applications.status %>
+    
+    <% if(applications.status=="MATERIAL ISSUED BY STORE IN-CHARGE"){ %>
+
+        <p class="muted">ISSUED MATERIAL: <%= applications.material_issued %></p>
+    
+    <% } %>
+
+</td>
     <td><form action="/update/<%= applications.arn %>" method="post">
 
         <input class="form-control" type="file" name="receipt"><br>
@@ -35,10 +45,10 @@
 
 </tr>
 
-    </table>
+    
 
 <% }) %>
-
+</table>
 <% } %>
 
 

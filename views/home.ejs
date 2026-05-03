@@ -80,6 +80,7 @@
           <th>CREW Serial Number</th>
           <th>Description</th>
           <th>Status</th>
+          <th>Assigned Technician</th>
           <th>Action</th>
         </tr>
 
@@ -103,10 +104,26 @@
          <td>
               <%= mysubmissions.status %>
 
+              <% if(mysubmissions.status=="MATERIAL ISSUED BY STORE IN-CHARGE"){ %>
+
+        <p class="muted">ISSUED MATERIAL: <%= mysubmissions.material_issued %></p>
+    
+    <% } %>
+
 
                 </td>
+                <td><%= mysubmissions.assigned_technician %></td>
                 <td>
+                  <% if(mysubmissions.status!="APPLICATION SUBMITTED"){ %>
+<p class="muted">DISABLED</p>
+
+<% } else if(mysubmissions.status=="COMPLETED") { %>
+<a href="/feedback/<%= mysubmissions.arn %>" class="btn btn-primary">Feedback</a>
+
+                  <% } else  { %>
                   <a href="/delete/<%= mysubmissions.arn %>" class="btn btn-danger">Delete</a>
+                
+                <% } %>
                 </td>
       </tr>
       

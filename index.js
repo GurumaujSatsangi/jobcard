@@ -230,6 +230,17 @@ app.get("/issue/:id",async(req,res)=>{
 
 })
 
+app.post("/issue-item/:id",async(req,res)=>{
+  
+  const {item} = req.body;
+
+  const data = await client.query("update applications set material_issued = $1, status=$2",[item,"MATERIAL ISSUED BY STORE IN-CHARGE"]);
+
+  if(data.rows[0]){
+    return res.render("message.ejs",{message:"MATERIAL ISSUED !"})
+  }
+})
+
 app.get("/new/:id", checkAuth, async (req, res) => {
   const data = await client.query(
     "select * from ac_database where crew_serial_number=$1",
@@ -295,8 +306,8 @@ app.get("/technician/dashboard",checkTechAuth, async(req,res)=>{
   const technicianName = req.user?.technician_name;
 
   const applications = await client.query(
-    "select * from applications where assigned_technician = $1",
-    [technicianName],
+    "select * from applications where assigned_technician = $1 and (status=$2 or status=$3)",
+    [technicianName,"TECHNICIAN ASSIGNED","MATERIAL ISSUED BY STORE IN-CHARGE"],
   );
   return res.render("technician.ejs",{applications: applications.rows});
 })

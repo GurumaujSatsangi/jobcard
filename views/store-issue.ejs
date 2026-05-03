@@ -37,7 +37,7 @@
 
                             <% items.forEach(function(items){ %>
 
-                                <option value="<%=items.item_code %>"><%= items.item_name %>(<%= items.item_code %>)</option>
+                                <option value="<%= items.item_name %> (<%=items.item_code %>)"><%= items.item_name %>(<%= items.item_code %>)</option>
                             
                             <% }) %>
 
