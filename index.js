@@ -213,6 +213,23 @@ app.post("/submit-gbs-application/:id",checkAuth,async(req,res)=>{
   }
 })
 
+
+app.get("/store/dashboard",async(req,res)=>{
+
+  const applications = await client.query("select * from applications where status=$1",["TECHNICIAN ASSIGNED"]);
+
+  return res.render("store.ejs",{applications:applications.rows});
+})
+
+app.get("/issue/:id",async(req,res)=>{
+  const items = await client.query("select * from items");
+
+  const applications = await client.query("select * from applications where arn=$1 and status=$1",[req.params.id,"TECHNICIAN ASSIGNED"]);
+
+  return res.render("store-issue.ejs",{items:items.rows,applications:applications.rows});
+
+})
+
 app.get("/new/:id", checkAuth, async (req, res) => {
   const data = await client.query(
     "select * from ac_database where crew_serial_number=$1",

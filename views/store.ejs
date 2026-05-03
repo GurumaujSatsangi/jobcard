@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <%- include('partials/navbar') %>
+
+    <div class="container">
+        <h4>Store In-Charge Panel</h4><hr>
+
+    <% if(applications && applications.length>0) { %>
+
+        <table class="table">
+            <tr>
+                <th>ARN</th>
+                <th>ASSIGNED TECHNICIAN</th>
+                <th>STATUS</th>
+                <th>ACTION</th>
+            </tr>
+
+        <% applications.forEach(function(applications){ %>
+
+            <tr>
+                <td><%= applications.arn %></td>
+                <td><%= applications.assigned_technician %></td>
+                <td><%= applications.status %></td>
+                <td><a href="/issue/<%= applications.arn%>" class="btn btn-primary">Issue</a>
+                <a href="/store/report/<%= applications.arn %>" class="btn btn-danger">Report</a>
+                </td>
+
+            </tr>
+        
+        
+        <% }) %>
+    
+            </table>
+
+    <% } else { %>
+        <p class="small">No Applications Found!</p>
+
+        <% } %>
+
+    </div>
+
+
+    <%-include('partials/footer') %>
+    
+</body>
+</html>
