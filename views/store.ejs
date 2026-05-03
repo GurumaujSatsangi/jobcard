@@ -48,7 +48,7 @@
 
     <h5>Manage Inventory</h5>
     <a href="/store/dashboard/new-item" class="btn btn-success">Add New Item</a>    
-    <a href="/store/dashboard/new-inventory-record" class="btn btn-warning">Add New Inventory Record</a>
+    <a href="/store/dashboard/new-inventory-record/bulk" class="btn btn-warning">Add New Inventory Record (Bulk)</a>
 
     <hr>
 
@@ -60,7 +60,7 @@
                 <th>ITEM CODE</th>
                 <th>ITEM NAME</th>
                 <th>AVAILABLE QUANTITY</th>
-                <th>ACTION</th>
+                <th>NEW INVENTORY RECORD</th>
             </tr>
 
 
@@ -70,7 +70,7 @@
     <td><%= items.item_code%></td>
     <td><%= items.item_name%></td>
     <td><%= items.qty %></td>
-    <td><a href="/manage-item/<%= items.item_code %>" class="btn btn-primary">Manage</a></td>
+    <td><a href="/store/dashboard/new-inventory-record/<%= items.item_code %>" class="btn btn-primary">ADD</a></td>
 </tr>
     
     

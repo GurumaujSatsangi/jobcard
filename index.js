@@ -219,9 +219,12 @@ app.get("/store/dashboard/new-item",async(req,res)=>{
 
 })
 
-app.get("/store/dashboard/new-inventory-record",async(req,res)=>{
+app.get("/store/dashboard/new-inventory-record/:id",async(req,res)=>{
 
-  return res.render("new-inventory-record.ejs");
+
+  const items = await client.query("select * from items where item_code = $1",[req.params.id]);
+
+  return res.render("new-inventory-record.ejs",{items:items.rows[0]});
 
 })
 

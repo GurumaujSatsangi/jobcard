@@ -10,9 +10,41 @@
     <%- include('partials/navbar') %>
     <div class="container">
 
-        <h5>New Inventory Record</h5><hr>
+        <h5>New Inventory Record</h5>
+        <hr>
 
-        <form action="/add-new-item" method="post">
+        <form action="/add-new-inventory-record" method="post">
+
+<table>
+    <tr>
+        <th>ITEM CODE</th>
+        <th>ITEM DESCRIPTION</th>
+        <th>MAKE / BRAND</th>
+        <th>UNIT OF MEASUREMENT</th>
+        <th>AVAILABLE QUANTITY</th>
+    </tr>
+    <tr>
+        <td><%= items.item_code %></td>
+        <td><%= items.item_name %></td>
+        <td><%= items.item_make %></td>
+        <td><%= items.unit %></td>
+        <td><%= items.qty %></td>
+    </tr>
+</table>
+          
+            <select class="form-select" name="purchase_head">
+                <option value="PO">PO</option>
+                <option value="Contingency">Contingency</option>
+            </select>
+<br>
+            <input class="form-control" type="number" name="quantity" placeholder="Quantity">
+           <br> <input class="form-control" type="number" name="rate" placeholder="Rate">
+            <br><input class="form-control" type="file" name="po_indent_file">
+            <br><input class="form-control" type="file" name="invoice">
+           <br> <textarea class="form-control" name="remarks" placeholder="Remarks (If Any)"></textarea>
+           <br> <button class="btn btn-primary">Submit Purchase</button>
+
+
 
             
 
