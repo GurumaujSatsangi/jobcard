@@ -87,7 +87,7 @@ async function checkTechAuth(req, res, next) {
 // Pass 'res' so the function can set the cookie
 async function UserLogin(employee_id, password, res) {
   const user = await client.query(
-    "SELECT employee_id, hashed_password FROM users WHERE employee_id = $1",
+    "SELECT emp_name, employee_id, hashed_password FROM users WHERE employee_id = $1",
     [employee_id],
   );
 
@@ -103,6 +103,7 @@ async function UserLogin(employee_id, password, res) {
     const token = jwt.sign(
       {
         employee_id: user.rows[0].employee_id,
+        emp_name: user.rows[0].emp_name,
       },
       process.env.JWT_SECRET,
     );
@@ -223,7 +224,7 @@ app.get("/home", checkAuth, async (req, res) => {
     "select * from ac_database where $1=any(assigned_to)",
     [employeeId],
   );
-  return res.render("home.ejs", { mysubmissions: mysubmissions.rows , myacs:myacs.rows});
+  return res.render("home.ejs", { mysubmissions: mysubmissions.rows , myacs:myacs.rows, user:req.user});
 });
 
 app.get("/new/glass-blowing-section",checkAuth,async(req,res)=>{
