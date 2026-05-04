@@ -1,0 +1,36 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Technician Login</title>
+  
+<link rel="stylesheet" href="/styles.css" />
+
+</head>
+<body>
+<%-include('partials/navbar') %>
+    <div class="container">
+    <form action="/store-login" method="post">
+  <!-- Email input -->
+ <!-- Password input -->
+  <div data-mdb-input-init class="form-outline mb-4">
+    <input type="email" id="form2Example2" name="store_email_id" class="form-control" />
+    <label class="form-label" for="form2Example2">Email Address</label>
+  </div>
+
+  <!-- Password input -->
+  <div data-mdb-input-init class="form-outline mb-4">
+    <input type="password" id="form2Example2" name="password" class="form-control" />
+    <label class="form-label" for="form2Example2">Password</label>
+  </div>
+
+  <!-- Submit button -->
+  <button type="submit" data-mdb-button-init data-mdb-ripple-init class="btn btn-primary btn-block mb-2">Sign in</button>
+
+</form>
+    </div>
+    <%- include('partials/footer') %>
+</body>
+</html>

@@ -305,4 +305,12 @@ hr {
     text-align: center;
   }
 
+  .spinner-border{
+    visibility: hidden;
+  }
+
+  .spinner-border:active{
+    visibility: visible;
+  }
+
   

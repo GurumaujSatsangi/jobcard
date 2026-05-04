@@ -156,6 +156,41 @@ async function TechnicianLogin(technician_id, password, res) {
 }
 
 
+async function StoreLogin(technician_id, password, res) {
+  const user = await client.query(
+    "SELECT * FROM technicians WHERE technician_id = $1",
+    [technician_id],
+  );
+
+  if (user.rowCount === 0) return false;
+
+  const isValidPassword = await bcrypt.compare(
+    password,
+    user.rows[0].hashed_password,
+  );
+
+  // Only generate token and cookie if password is correct
+  if (isValidPassword) {
+    const token = jwt.sign(
+      {
+        technician_id: user.rows[0].technician_id,
+        technician_name:user.rows[0].technician_name,
+      },
+      process.env.JWT_SECRET,
+    );
+
+    res.cookie("tech_auth_token", token, {
+      // Added name 'auth_token'
+      maxAge: 900000,
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+    });
+  }
+
+  return isValidPassword;
+}
+
 
 app.get("/delete/:id", checkAuth, async (req, res) => {
   const data = await client.query("delete from applications where arn = $1 ", [
@@ -163,7 +198,7 @@ app.get("/delete/:id", checkAuth, async (req, res) => {
   ]);
 
   if (data) {
-    return res.redirect("/home");
+    return res.render("message.ejs",{message:"ONLINE JOB CARD APPLICATION WITH ARN: "+req.params.id+" HAS BEEN DELETED !"});
   }
 });
 
@@ -228,6 +263,23 @@ app.get("/store/dashboard/new-inventory-record/:id",async(req,res)=>{
 
 })
 
+
+app.post("/store-login",async(req,res)=>{
+
+const {store_email_id, password} = req.body;
+
+const isAuthenticated = await StoreLogin(store_email_id,password, res);
+
+  if (!isAuthenticated) {
+    return res.status(401).send("Invalid Password");
+  }
+
+  return res.redirect("/store/dashboard");
+
+
+
+})
+
 app.get("/store/dashboard",async(req,res)=>{
 
   const items = await client.query("select * from items");
@@ -262,7 +314,7 @@ app.post("/issue-item/:id",async(req,res)=>{
 
   const data4 = await client.query("update items set qty = $1 where item_code = $2",[updated_qty,match[1]]);
 
-  const data = await client.query("update applications set material_issued = $1, status=$2",[item,"MATERIAL ISSUED BY STORE IN-CHARGE"]);
+  const data = await client.query("update applications set material_issued = $1, status=$2 returning *",[item,"MATERIAL ISSUED BY STORE IN-CHARGE"]);
 
   if(data.rows[0]){
     return res.render("message.ejs",{message:"MATERIAL ISSUED !"})
@@ -314,13 +366,15 @@ app.post("/submit-new-application", async (req, res) => {
 
   const arn = crypto.randomUUID();
 
+  
+
   const data = await client.query(
-    "insert into applications (arn, indentor, crew_serial_number, status, description) values ($1, $2, $3, $4,$5)",
-    [arn, indentor, crew_serial_number, "APPLICATION SUBMITTED",description],
+    "insert into applications (arn, indentor, crew_serial_number, status, description, section) values ($1, $2, $3, $4,$5,$6)",
+    [arn, indentor, crew_serial_number, "APPLICATION SUBMITTED",description,"AIR CONDITIONING & REFRIGERATION SECTION"],
   );
 
   if (data) {
-    return res.send("Submitted Succesfully !");
+    return res.render("message.ejs",{message:"APPLICATION SUBMITTED !"});
   }
 });
 
@@ -385,7 +439,7 @@ app.get("/admin", async (req, res) => {
 app.get("/manage/:id", async (req, res) => {
   const data = await client.query(
     "select * from applications where arn = $1 and status = $2",
-    [req.params.id,"TECHNICIAN ASSIGNED"],
+    [req.params.id,"APPLICATION SUBMITTED"],
   );
 
   if(!data.rows[0]){

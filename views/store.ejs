@@ -72,20 +72,16 @@
     <td><%= items.qty %></td>
     <td><a href="/store/dashboard/new-inventory-record/<%= items.item_code %>" class="btn btn-primary">ADD</a></td>
 </tr>
-    
-    
     <% }) %>
-            </table>
+    </table>
 
-    
     <% } else { %>
 <p class="small">No Items Found!</p>
         <% } %>
+</div>
 
-    </div>
 
-
-    <%-include('partials/footer') %>
+<%-include('partials/footer') %>
     
 </body>
 </html>

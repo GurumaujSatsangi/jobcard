@@ -12,7 +12,13 @@
 <% if (!result) { %>
 <p><%= error || 'No AC record found.' %></p>
 <% } else { %>
-<table class="table">
+
+
+
+        <hr>
+    <form action="/submit-new-application" method="post">
+
+        <table>
     <tr>
         <th>CREW Serial Number</th>
         <th>Brand</th>
@@ -33,8 +39,6 @@
 </table>
 
 
-        <hr>
-    <form action="/submit-new-application" method="post">
                 <input type="hidden" name="indentor" value="<%= decodedUser.employee_id %>">
 
 
@@ -46,7 +50,7 @@
 </div>
         </textarea>
 
-        <input class="btn btn-primary" type="submit" value="Submit">
+        <button class="btn btn-primary" type="submit">Submit</button>
     </form>
 <% } %>
     </div>
