@@ -254,6 +254,10 @@ app.get("/store/dashboard/new-item",async(req,res)=>{
 
 })
 
+app.get("/store/dashboard/new-inventory-record/bulk",async(req,res)=>{
+  return res.render("message.ejs",{message:"COMING SOON !"})
+})
+
 app.get("/store/dashboard/new-inventory-record/:id",async(req,res)=>{
 
 

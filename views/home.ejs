@@ -16,19 +16,30 @@
 <h5>Air Condtioning & Refrigeration Section</h5>
     <% if(myacs && myacs.length>0){ %>
 
+      <table class="table">
+        <tr>
+          <th>CREW SERIAL NUMBER</th>
+          <th>MAKE / BRAND</th>
+          <th>DEPARTMENT / SCHOOL / SECTION / UNIT</th>
+          <th>ROOM NUMBER</th>
+          <th>APPLY</th>
+        </tr>
+
       <% myacs.forEach(function(myacs){ %>
       
-      
-  <div class="card">
-  <div class="card-body">
-    <h5 class="card-title"><%= myacs.crew_serial_number %></h5>
-    <p class="card-text">More Data Coming Soon!</p>
-    <a href="/new/<%= myacs.crew_serial_number %>" class="btn btn-primary">Submit</a>
-  </div>
-</div>
+      <tr>
+        <td><%= myacs.crew_serial_number %></td>
+        <td><%= myacs.make %></td>
+        <td><%= myacs.department %></td>
+        <td><%= myacs.room_number %></td>
+        <td><a href="/new/<%= myacs.crew_serial_number %>" class="btn btn-primary"><i class="fas fa-arrow-right-to-bracket"></i></a>
+</td>
+        
+      </tr>
+  
       <% }) %>
     
-    
+      </table>
     <% } else { %>
       <p class="small">No Air Conditioners Assigned to You!</p>
 
@@ -115,7 +126,7 @@
                 <td><%= mysubmissions.assigned_technician %></td>
                 <td>
                   <% if(mysubmissions.status!="APPLICATION SUBMITTED"){ %>
-<p class="muted">DISABLED</p>
+<p  class="muted">DISABLED</p>
 
 <% } else if(mysubmissions.status=="COMPLETED") { %>
 <a href="/feedback/<%= mysubmissions.arn %>" class="btn btn-primary">Feedback</a>
@@ -139,6 +150,7 @@
   </div>
 
     <%- include('partials/footer') %>
+    
   
 </body>
 </html>
