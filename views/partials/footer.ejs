@@ -32,5 +32,7 @@
 <!-- Bootstrap 6 ships its bundle as an ES module -->
 <script type="module" src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 <script type="module" src="/js/app.js"></script>
+<% (locals.scripts || []).forEach(src => { %><script type="module" src="<%= src %>"></script>
+<% }) %>
 </body>
 </html>

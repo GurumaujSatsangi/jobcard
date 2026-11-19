@@ -183,6 +183,32 @@
   }
   .step-details .bi { color: var(--bs-primary-fg); }
 
+  /* ---------- Technician pages ---------- */
+  .header-user { color: #fff; font-size: .9rem; }
+  .tech-container { max-width: 46rem; }
+  .tech-login-card { max-width: 26rem; border: 0; box-shadow: 0 10px 30px rgb(11 42 91 / .12); }
+  .tech-login-icon, .tech-empty-icon {
+    display: grid; place-items: center; margin-inline: auto;
+    width: 4rem; height: 4rem; border-radius: 50%;
+    font-size: 2rem; color: var(--bs-primary-fg);
+    background: color-mix(in oklch, var(--bs-primary-base) 12%, transparent);
+  }
+  .tech-empty-icon { background: none; font-size: 2.5rem; }
+  .tech-alert { display: flex; gap: .75rem; align-items: flex-start; font-size: 1.05rem; }
+  .tech-alert > .bi { font-size: 1.5rem; line-height: 1.2; }
+  .job-card { border: 0; box-shadow: 0 6px 20px rgb(11 42 91 / .08); }
+  .job-card:target { outline: 3px solid var(--bs-primary-base); }
+  .job-arn { font-size: 1.6rem; font-weight: 700; letter-spacing: .03em; }
+  .job-facts { display: grid; gap: .6rem; margin: 0; }
+  .job-facts > div { display: grid; grid-template-columns: 7.5rem 1fr; gap: .5rem; }
+  .job-facts dt { font-weight: 500; color: var(--bs-fg-3, inherit); }
+  .job-facts dt .bi { color: var(--bs-primary-fg); }
+  .job-facts dd { margin: 0; }
+  @media (max-width: 480px) { .job-facts > div { grid-template-columns: 1fr; gap: 0; } }
+  .receipt-pick { padding-block: 1rem; font-size: 1.1rem; border-style: dashed; }
+  .receipt-thumb { display: block; max-height: 16rem; max-width: 100%; margin-inline: auto; border-radius: .75rem; border: 1px solid var(--bs-border-color); }
+  .receipt-file { padding: .75rem 1rem; border-radius: .75rem; background: var(--bs-bg-1); word-break: break-all; }
+
   /* ---------- Footer ---------- */
   .site-footer { background: var(--jc-navy); color: #dfe6f3; }
   .site-footer a { color: var(--jc-gold); }

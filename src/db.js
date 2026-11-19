@@ -56,6 +56,40 @@ export async function initDb() {
       ADD COLUMN IF NOT EXISTS material_issued_at TIMESTAMPTZ,
       ADD COLUMN IF NOT EXISTS closed_at          TIMESTAMPTZ;
 
+    -- Technicians sign in with a passcode only. passcode_lookup is an HMAC of the
+    -- passcode (keyed with PASSCODE_PEPPER) so we can find the account without
+    -- trying every hash; passcode_hash is a bcrypt hash used to verify it.
+    CREATE TABLE IF NOT EXISTS technician_accounts (
+      id               SERIAL PRIMARY KEY,
+      name             TEXT NOT NULL,
+      phone            TEXT NOT NULL,
+      section          TEXT NOT NULL,
+      passcode_lookup  CHAR(64) UNIQUE NOT NULL,
+      passcode_hash    TEXT NOT NULL,
+      active           BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    -- One row per signed-in device. Holds the hash of the current refresh token
+    -- (rotated on every refresh) and the previous one for a short grace window.
+    CREATE TABLE IF NOT EXISTS technician_sessions (
+      id                 UUID PRIMARY KEY,
+      technician_id      INTEGER NOT NULL REFERENCES technician_accounts(id) ON DELETE CASCADE,
+      refresh_hash       CHAR(64) NOT NULL,
+      prev_refresh_hash  CHAR(64),
+      rotated_at         TIMESTAMPTZ,
+      created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+      last_used_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+      expires_at         TIMESTAMPTZ NOT NULL,
+      revoked_at         TIMESTAMPTZ,
+      user_agent         TEXT,
+      ip                 TEXT
+    );
+    CREATE INDEX IF NOT EXISTS technician_sessions_tech_idx ON technician_sessions(technician_id);
+
+    ALTER TABLE job_cards
+      ADD COLUMN IF NOT EXISTS technician_id INTEGER REFERENCES technician_accounts(id);
+
     CREATE TABLE IF NOT EXISTS job_card_attachments (
       id            SERIAL PRIMARY KEY,
       job_card_id   INTEGER NOT NULL REFERENCES job_cards(id) ON DELETE CASCADE,
@@ -65,6 +99,10 @@ export async function initDb() {
       size_bytes    INTEGER NOT NULL,
       uploaded_at   TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+
+    -- INDENTOR_UPLOAD (sent with the application) or SIGNED_RECEIPT (from technician).
+    ALTER TABLE job_card_attachments
+      ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'INDENTOR_UPLOAD';
   `);
 
   // Sample AC records so the CREW number lookup can be tried out locally.

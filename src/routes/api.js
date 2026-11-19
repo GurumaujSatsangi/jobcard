@@ -64,7 +64,12 @@ router.get("/ac/:crew", async (req, res, next) => {
 router.get("/job-cards/:arn", async (req, res, next) => {
   try {
     const arn = req.params.arn.trim().toUpperCase();
-    const { rows } = await query("SELECT * FROM job_cards WHERE arn = $1", [arn]);
+    const { rows } = await query(
+      `SELECT jc.*, ta.name AS ta_name, ta.phone AS ta_phone
+         FROM job_cards jc LEFT JOIN technician_accounts ta ON ta.id = jc.technician_id
+        WHERE jc.arn = $1`,
+      [arn],
+    );
     const jc = rows[0];
     if (!jc) {
       return res.status(404).json({ error: "No Job Card Application found for this ARN." });
@@ -80,7 +85,7 @@ router.get("/job-cards/:arn", async (req, res, next) => {
         title: "Technician Assigned",
         at: ts(jc.assigned_at),
         details: jc.assigned_at
-          ? { technician: jc.technician_name, phone: jc.technician_phone }
+          ? { technician: jc.ta_name ?? jc.technician_name, phone: jc.ta_phone ?? jc.technician_phone }
           : null,
       },
       {
