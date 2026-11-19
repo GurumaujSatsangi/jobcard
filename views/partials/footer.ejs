@@ -1,71 +1,36 @@
-
-   <link
-  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-  rel="stylesheet"
-/>
-<!-- Google Fonts -->
-<link
-  href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap"
-  rel="stylesheet"
-/>
-<!-- MDB -->
-<link
-  href="https://cdn.jsdelivr.net/npm/mdb-ui-kit@9.3.0/css/mdb.min.css"
-  rel="stylesheet"
-/>
-<!-- MDB -->
-<script
-  type="text/javascript"
-  src="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/9.3.0/mdb.umd.min.js"
-></script>
-<footer class="bg-body-tertiary text-center text-lg-start">
-  <!-- Grid container -->
-  <div class="container p-4">
-    <!--Grid row-->
-    <div class="row">
-      <!--Grid column-->
-      <div class="col-lg-6 col-md-12 mb-4 mb-md-0">
-        <h5 class="text-uppercase">Help Desk</h5>
-
-        <p align="justify">
-          Incase of any queries, please feel free to reach out to us at <a href="mailto:onlinejobcard@iacs.res.in">onlinejobcard@iacs.res.in</a> or contact us at Extension Number 1703.
-
+<footer class="site-footer mt-auto">
+  <div class="container py-8">
+    <div class="row g-6">
+      <div class="col-12 md:col-6">
+        <h2 class="h5 mb-3"><i class="bi bi-life-preserver me-2" aria-hidden="true"></i>Help Desk</h2>
+        <p class="mb-2">In case of any queries, please feel free to reach out to us at
+          <a href="mailto:<%= HELPDESK.email %>"><%= HELPDESK.email %></a>
+          or contact us at Extension Number <strong><%= HELPDESK.extension %></strong>.</p>
+        <p class="mb-0 small fg-3">
+          Indian Association for the Cultivation of Science, 2A &amp; 2B Raja S. C. Mullick Road, Jadavpur, Kolkata 700032
         </p>
       </div>
-      <!--Grid column-->
-
-      <!--Grid column-->
-      <div class="col-lg-6 col-md-12 mb-4 mb-md-0">
-        <h5 class="text-uppercase">Section-wise Landlines</h5>
-
-        <p align="justify">
-
-            <table class="table">
-                <tr>
-                    <td>Air Conditioning & Refrigeration Section</td><td>2170</td>
-                </tr>
-                <tr>
-                    <td>Glass Blowing Section</td><td>1703</td>
-                </tr>
-                <tr>
-                    <td>Electrical Section</td><td>1704</td>
-                </tr>
-                <tr><td>Mechanical Section</td><td>1700 / 1164</td></tr>
-            </table>
-          
-        </p>
+      <div class="col-12 md:col-6">
+        <h2 class="h5 mb-3"><i class="bi bi-telephone me-2" aria-hidden="true"></i>Section Extensions</h2>
+        <table class="table table-sm mb-0 footer-table">
+          <tbody>
+            <% SECTIONS.forEach(s => { %>
+            <tr><td><%= s.label %></td><td class="text-end fw-semibold"><%= s.extension %></td></tr>
+            <% }) %>
+          </tbody>
+        </table>
       </div>
-      <!--Grid column-->
     </div>
-    <!--Grid row-->
+    <hr class="my-6">
+    <div class="d-flex flex-wrap justify-content-between gap-2 small fg-3">
+      <span>&copy; <%= year %> IACS CREW. All rights reserved.</span>
+      <a href="https://www.iacs.res.in/" target="_blank" rel="noopener">Go Back to IACS Home Page</a>
+    </div>
   </div>
-  <!-- Grid container -->
-
-  <!-- Copyright -->
-  <div class="text-center p-3" style="background-color: rgba(0, 0, 0, 0.05);">
-    © Copyright
-    <a class="text-body" href="https://iacs.res.in/">Indian Association for the Cultivation of Science</a>
-    <p class="small">Designed & Developed by IACS CREW</p>
-  </div>
-  <!-- Copyright -->
 </footer>
+
+<!-- Bootstrap 6 ships its bundle as an ES module -->
+<script type="module" src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>

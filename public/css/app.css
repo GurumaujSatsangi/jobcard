@@ -1,0 +1,197 @@
+/* IACS Online Job Card Portal — layer on top of Bootstrap 6 */
+@layer custom {
+  :root {
+    --jc-navy: #0b2a5b;
+    --jc-navy-2: #123d80;
+    --jc-gold: #f2b632;
+    --jc-surface: light-dark(#f4f6fb, #0f1420);
+  }
+
+  html, body { min-height: 100%; }
+  body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: var(--jc-surface);
+  }
+
+  /* ---------- Header ---------- */
+  .site-header .navbar {
+    background: var(--jc-navy);
+    color: #fff;
+  }
+  .site-header .navbar > .container { flex-wrap: nowrap; }
+  .site-header .navbar-brand { color: #fff; text-decoration: none; min-width: 0; flex: 1 1 auto; }
+  .brand-logo { border-radius: 50%; background: #fff; padding: 2px; flex-shrink: 0; }
+  .brand-title { font-weight: 600; font-size: clamp(.85rem, 2.2vw, 1.15rem); white-space: normal; }
+  .brand-sub { font-size: .8rem; color: var(--jc-gold); letter-spacing: .04em; text-transform: uppercase; }
+  .site-header .btn.theme-secondary { color: #fff; border-color: rgb(255 255 255 / .35); }
+  .site-header .btn.btn-subtle.theme-secondary { background: rgb(255 255 255 / .12); }
+  .site-header .btn.btn-subtle.theme-secondary:hover { background: rgb(255 255 255 / .22); }
+
+  [data-bs-theme="dark"] .theme-icon-dark,
+  [data-bs-theme="light"] .theme-icon-light { display: none; }
+
+  /* ---------- Ticker ---------- */
+  .ticker {
+    overflow: hidden;
+    background: var(--jc-navy-2);
+    color: #e7ecf7;
+    font-size: .875rem;
+    white-space: nowrap;
+  }
+  .ticker a { color: var(--jc-gold); }
+  .ticker-track {
+    display: inline-flex;
+    padding: .45rem 0;
+    animation: ticker 40s linear infinite;
+  }
+  .ticker-track > span { padding-inline-end: 2rem; }
+  .ticker .sep { opacity: .5; margin-inline: .75rem; }
+  .ticker:hover .ticker-track { animation-play-state: paused; }
+  @keyframes ticker { to { transform: translateX(-50%); } }
+  @media (prefers-reduced-motion: reduce) {
+    .ticker-track { animation: none; white-space: normal; }
+    .ticker-track > span[aria-hidden] { display: none; }
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    color: #fff;
+    background:
+      radial-gradient(1200px 400px at 50% -10%, rgb(255 255 255 / .12), transparent 60%),
+      linear-gradient(160deg, var(--jc-navy) 0%, var(--jc-navy-2) 100%);
+    padding-bottom: 5rem;
+  }
+  .hero-kicker { font-size: .8rem; opacity: .75; }
+  .hero-title { font-size: clamp(2rem, 6vw, 3.25rem); font-weight: 700; letter-spacing: -.01em; }
+  .hero-lead { max-width: 46rem; font-size: 1.1rem; opacity: .9; }
+
+  /* ---------- Service cards ---------- */
+  .services { margin-top: -4rem; padding-bottom: 4rem; }
+  .service-card {
+    border: 0;
+    box-shadow: 0 10px 30px rgb(11 42 91 / .12);
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .service-card:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgb(11 42 91 / .18); }
+  .service-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 1rem;
+    font-size: 1.6rem;
+    color: var(--bs-theme-fg, var(--bs-primary-fg));
+    background: var(--bs-theme-bg-subtle, var(--bs-bg-2));
+  }
+
+  /* ---------- Forms in dialogs ---------- */
+  .req { color: var(--bs-danger-fg); }
+  .jc-row { padding-block: 1rem; border-bottom: 1px solid var(--bs-border-color); margin-inline: 0; }
+  .jc-row:last-child { border-bottom: 0; }
+  .jc-label { font-weight: 500; }
+  fieldset.jc-row { min-width: 0; }
+
+  .section-grid { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); }
+  .section-option {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .85rem 1rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: .75rem;
+    cursor: pointer;
+    transition: border-color .15s, background-color .15s;
+  }
+  .section-option .bi { font-size: 1.2rem; color: var(--bs-primary-fg); }
+  .section-option:hover { border-color: var(--bs-primary-base); }
+  .section-option:has(input:checked) {
+    border-color: var(--bs-primary-base);
+    background: color-mix(in oklch, var(--bs-primary-base) 10%, transparent);
+  }
+
+  .ac-table th { width: 40%; font-weight: 500; color: var(--bs-fg-3, inherit); }
+
+  .dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .25rem;
+    padding: 1.5rem;
+    border: 2px dashed var(--bs-border-color);
+    border-radius: .75rem;
+    cursor: pointer;
+    text-align: center;
+    transition: border-color .15s, background-color .15s;
+  }
+  .dropzone .bi { font-size: 2rem; color: var(--bs-primary-fg); }
+  .dropzone:hover, .dropzone.is-dragover {
+    border-color: var(--bs-primary-base);
+    background: color-mix(in oklch, var(--bs-primary-base) 6%, transparent);
+  }
+  .file-list { list-style: none; padding: 0; margin: .5rem 0 0; display: grid; gap: .35rem; }
+  .file-list li {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .4rem .75rem; border-radius: .5rem; background: var(--bs-bg-1); font-size: .875rem;
+  }
+  .file-list li .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .invalid-feedback.d-block { display: block; }
+
+  .success-icon {
+    display: inline-grid; place-items: center;
+    width: 4.5rem; height: 4.5rem; border-radius: 50%;
+    font-size: 2.5rem; color: #fff; background: var(--bs-success-base);
+  }
+  .arn-chip { padding: .5rem 1rem; border-radius: .75rem; background: var(--bs-bg-1); }
+
+  .status-badge { font-size: .8rem; }
+
+  /* Status progress (Bootstrap 6 .stepper, vertical) */
+  .job-stepper {
+    --bs-stepper-size: 2.25rem;
+    --bs-stepper-gap: 1.25rem;
+    --bs-stepper-track-size: .2rem;
+    --bs-stepper-align-items: start;
+    grid-auto-rows: auto;
+    margin: 0;
+  }
+  /* Steps have uneven heights, so draw the track from the bottom of each circle to the next. */
+  .job-stepper .stepper-item::after {
+    inset-block-start: var(--bs-stepper-size);
+    height: calc(100% - var(--bs-stepper-size) + var(--bs-stepper-gap));
+  }
+  .job-stepper .stepper-item.is-current::before {
+    box-shadow: 0 0 0 .2rem var(--bs-primary-base);
+    background: var(--bs-bg-body);
+    color: var(--bs-primary-fg);
+  }
+  .step-body { padding-top: .3rem; min-width: 0; }
+  .step-title { font-weight: 600; }
+  .step-title .bi { color: var(--bs-primary-fg); margin-inline-end: .25rem; }
+  .is-pending .step-title { color: var(--bs-fg-3, inherit); }
+  .step-time { font-size: .85rem; margin-top: .15rem; }
+  .step-details {
+    margin-top: .5rem;
+    padding: .6rem .8rem;
+    border-radius: .6rem;
+    background: var(--bs-bg-1);
+    font-size: .9rem;
+    display: grid;
+    gap: .25rem;
+  }
+  .step-details .bi { color: var(--bs-primary-fg); }
+
+  /* ---------- Footer ---------- */
+  .site-footer { background: var(--jc-navy); color: #dfe6f3; }
+  .site-footer a { color: var(--jc-gold); }
+  .site-footer .fg-3 { color: #b6c2d9; }
+  .site-footer hr { border-color: rgb(255 255 255 / .2); }
+  .footer-table { --bs-table-bg: transparent; --bs-table-color: inherit; color: inherit; }
+  .footer-table td { background: transparent; color: inherit; border-color: rgb(255 255 255 / .15); }
+
+  /* ---------- Toast ---------- */
+  .toast-zone { position: fixed; inset-inline-end: 1rem; inset-block-end: 1rem; z-index: 2000; display: grid; gap: .5rem; }
+  .toast-zone .alert { box-shadow: 0 8px 24px rgb(0 0 0 / .2); margin: 0; }
+}

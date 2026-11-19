@@ -1,0 +1,182 @@
+<dialog class="dialog dialog-xl dialog-scrollable" id="newJobCardDialog" aria-labelledby="newJobCardTitle">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="newJobCardTitle"><i class="bi bi-file-earmark-plus me-2" aria-hidden="true"></i>New Job Card Application</h2>
+    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+  </div>
+
+  <div class="dialog-body">
+    <form id="jobCardForm" class="jc-form" novalidate enctype="multipart/form-data">
+      <div class="alert theme-danger mb-5" id="formError" role="alert" hidden></div>
+
+      <!-- Name -->
+      <div class="row g-3 jc-row">
+        <div class="col-12 md:col-4"><span class="form-label jc-label">Name of Indentor <span class="req">*</span></span></div>
+        <div class="col-12 md:col-8">
+          <div class="row g-3">
+            <div class="col-12 sm:col-6">
+              <input type="text" class="form-control" id="firstName" name="firstName" required autocomplete="given-name" aria-describedby="firstNameHelp">
+              <div class="form-text" id="firstNameHelp">First Name</div>
+              <div class="invalid-feedback" data-for="firstName">First name is required.</div>
+            </div>
+            <div class="col-12 sm:col-6">
+              <input type="text" class="form-control" id="lastName" name="lastName" required autocomplete="family-name" aria-describedby="lastNameHelp">
+              <div class="form-text" id="lastNameHelp">Last Name</div>
+              <div class="invalid-feedback" data-for="lastName">Last name is required.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Email -->
+      <div class="row g-3 jc-row">
+        <div class="col-12 md:col-4"><label class="form-label jc-label" for="email">Email <span class="req">*</span></label></div>
+        <div class="col-12 md:col-8">
+          <input type="email" class="form-control" id="email" name="email" required autocomplete="email"
+                 pattern="^[^\s@]+@<%= OFFICIAL_EMAIL_DOMAIN.replace('.', '\\.') %>$" placeholder="yourname@<%= OFFICIAL_EMAIL_DOMAIN %>" aria-describedby="emailHelp">
+          <div class="form-text" id="emailHelp"><strong>Please enter Official Email Only!</strong> (@<%= OFFICIAL_EMAIL_DOMAIN %>)</div>
+          <div class="invalid-feedback" data-for="email">Please enter your official @<%= OFFICIAL_EMAIL_DOMAIN %> email.</div>
+        </div>
+      </div>
+
+      <!-- Contact -->
+      <div class="row g-3 jc-row">
+        <div class="col-12 md:col-4"><label class="form-label jc-label" for="contactNumber">Contact Number <span class="req">*</span></label></div>
+        <div class="col-12 md:col-8">
+          <input type="text" inputmode="numeric" class="form-control" id="contactNumber" name="contactNumber" required pattern="\d{2,6}" maxlength="6" aria-describedby="contactHelp">
+          <div class="form-text" id="contactHelp">IACS Extension No.</div>
+          <div class="invalid-feedback" data-for="contactNumber">Enter a valid IACS extension number.</div>
+        </div>
+      </div>
+
+      <!-- Department -->
+      <div class="row g-3 jc-row">
+        <div class="col-12 md:col-4"><label class="form-label jc-label" for="department">Name of the School/Department/Section/Unit <span class="req">*</span></label></div>
+        <div class="col-12 md:col-8">
+          <input type="text" class="form-control" id="department" name="department" required>
+          <div class="invalid-feedback" data-for="department">This field is required.</div>
+        </div>
+      </div>
+
+      <!-- Section -->
+      <div class="row g-3 jc-row" role="radiogroup" aria-labelledby="sectionLabel" aria-required="true">
+        <div class="col-12 md:col-4"><span class="form-label jc-label" id="sectionLabel">Select Section <span class="req">*</span></span></div>
+        <div class="col-12 md:col-8">
+          <div class="section-grid">
+            <% SECTIONS.forEach((s, i) => { %>
+            <label class="section-option" for="section-<%= i %>">
+              <input class="radio" type="radio" name="section" id="section-<%= i %>" value="<%= s.value %>" required>
+              <i class="bi bi-<%= s.icon %>" aria-hidden="true"></i>
+              <span><%= s.label %></span>
+            </label>
+            <% }) %>
+          </div>
+          <div class="invalid-feedback" data-for="section">Please select a section.</div>
+        </div>
+      </div>
+
+      <!-- AC: item type -->
+      <div class="row g-3 jc-row" id="itemTypeGroup" role="radiogroup" aria-labelledby="itemTypeLabel" hidden>
+        <div class="col-12 md:col-4"><span class="form-label jc-label" id="itemTypeLabel">Select type of item that needs to be repaired <span class="req">*</span></span></div>
+        <div class="col-12 md:col-8 d-flex flex-column gap-3">
+          <% AC_ITEM_TYPES.forEach((t, i) => { %>
+          <div class="form-field">
+            <input class="radio" type="radio" name="itemType" id="itemType-<%= i %>" value="<%= t.value %>">
+            <label for="itemType-<%= i %>"><%= t.label %></label>
+          </div>
+          <% }) %>
+          <div class="invalid-feedback" data-for="itemType">Please select the item type.</div>
+        </div>
+      </div>
+
+      <!-- AC: CREW serial number lookup -->
+      <div id="crewGroup" hidden>
+        <div class="row g-3 jc-row">
+          <div class="col-12 md:col-4"><label class="form-label jc-label" for="crewSerialNumber">CREW Serial Number <span class="req">*</span></label></div>
+          <div class="col-12 md:col-8">
+            <div class="input-group">
+              <input type="text" class="form-control text-uppercase" id="crewSerialNumber" name="crewSerialNumber" placeholder="e.g. AC-0001" autocomplete="off">
+              <button type="button" class="btn btn-solid theme-secondary" id="crewFetchBtn">
+                <i class="bi bi-cloud-download" aria-hidden="true"></i> Fetch Data
+              </button>
+            </div>
+            <div class="form-text">The CREW Serial Number is on the sticker attached to your AC.</div>
+            <div class="invalid-feedback" data-for="crewSerialNumber">CREW Serial Number is required.</div>
+          </div>
+        </div>
+
+        <div id="acDetails" hidden>
+          <div class="row g-3 jc-row">
+            <div class="col-12 md:col-4"><span class="form-label jc-label">Air Conditioner Details</span></div>
+            <div class="col-12 md:col-8">
+              <div class="table-responsive">
+                <table class="table table-bordered table-sm mb-0 ac-table">
+                  <tbody id="acDetailsBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="row g-3 jc-row" role="radiogroup" aria-labelledby="detailsLabel">
+            <div class="col-12 md:col-4"><span class="form-label jc-label" id="detailsLabel">Are the details mentioned above correct? <span class="req">*</span></span></div>
+            <div class="col-12 md:col-8 d-flex flex-wrap gap-6">
+              <div class="form-field">
+                <input class="radio" type="radio" name="detailsCorrect" id="detailsYes" value="yes">
+                <label for="detailsYes">Yes</label>
+              </div>
+              <div class="form-field">
+                <input class="radio" type="radio" name="detailsCorrect" id="detailsNo" value="no">
+                <label for="detailsNo">No</label>
+              </div>
+              <div class="invalid-feedback w-100" data-for="detailsCorrect">Please confirm the details.</div>
+              <div class="form-text w-100" id="detailsNoHint" hidden>Please mention the correct details in the issue description below.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="row g-3 jc-row">
+        <div class="col-12 md:col-4"><label class="form-label jc-label" for="description">Description of your Issue <span class="req">*</span></label></div>
+        <div class="col-12 md:col-8">
+          <textarea class="form-control" id="description" name="description" rows="5" required minlength="5" maxlength="2000"></textarea>
+          <div class="invalid-feedback" data-for="description">Please describe the issue.</div>
+        </div>
+      </div>
+
+      <!-- Attachments -->
+      <div class="row g-3 jc-row">
+        <div class="col-12 md:col-4"><label class="form-label jc-label" for="attachments">Attachments</label></div>
+        <div class="col-12 md:col-8">
+          <label class="dropzone" id="dropzone" for="attachments">
+            <i class="bi bi-cloud-arrow-up" aria-hidden="true"></i>
+            <span class="fw-semibold">Browse Files</span>
+            <span class="small fg-3">Drag and drop files here</span>
+            <input type="file" id="attachments" name="attachments" multiple accept=".jpg,.jpeg,.png,.webp,.pdf" class="visually-hidden">
+          </label>
+          <ul class="file-list" id="fileList"></ul>
+          <div class="form-text">(If Any) &middot; Up to 5 files, JPG / PNG / WEBP / PDF, 10 MB each.</div>
+          <div class="invalid-feedback" data-for="attachments"></div>
+        </div>
+      </div>
+    </form>
+
+    <!-- Success state -->
+    <div id="jobCardSuccess" class="text-center py-6" hidden>
+      <span class="success-icon mb-4"><i class="bi bi-check-lg" aria-hidden="true"></i></span>
+      <h3 class="h4">Application Submitted!</h3>
+      <p class="fg-3">Your Application Reference Number (ARN) is</p>
+      <div class="d-inline-flex align-items-center gap-2 arn-chip">
+        <span id="successArn" class="font-monospace fs-xl fw-bold"></span>
+        <button type="button" class="btn btn-subtle theme-secondary btn-sm btn-icon" id="copyArnBtn" aria-label="Copy ARN"><i class="bi bi-copy" aria-hidden="true"></i></button>
+      </div>
+      <p class="small fg-3 mt-4 mb-0">Please save this ARN to check the status of your job card later.</p>
+    </div>
+  </div>
+
+  <div class="dialog-footer">
+    <button type="button" class="btn btn-subtle theme-secondary" data-bs-dismiss="dialog" id="jobCardCancelBtn">Cancel</button>
+    <button type="submit" form="jobCardForm" class="btn btn-solid theme-success" id="jobCardSubmitBtn">
+      <i class="bi bi-send" aria-hidden="true"></i> Submit
+    </button>
+    <button type="button" class="btn btn-solid theme-primary" id="jobCardNewBtn" hidden>Submit another</button>
+  </div>
+</dialog>

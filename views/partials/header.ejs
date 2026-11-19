@@ -1,0 +1,33 @@
+<header class="site-header">
+  <nav class="navbar" aria-label="Main">
+    <div class="container d-flex align-items-center gap-3 py-2">
+      <a class="navbar-brand d-flex align-items-center gap-3 me-auto" href="/">
+        <img src="/img/logo.png" alt="IACS logo" width="52" height="52" class="brand-logo">
+        <span class="d-flex flex-column lh-sm">
+          <span class="brand-title">Indian Association for the Cultivation of Science</span>
+          <span class="brand-sub">Online Job Card Portal</span>
+        </span>
+      </a>
+      <a class="btn btn-outline theme-secondary btn-sm d-none md:d-inline-flex" href="https://www.iacs.res.in/" target="_blank" rel="noopener">
+        <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> IACS Home
+      </a>
+      <button type="button" class="btn btn-subtle theme-secondary btn-icon" id="themeToggle" aria-label="Toggle colour mode" title="Toggle light / dark mode">
+        <i class="bi bi-moon-stars-fill theme-icon-dark" aria-hidden="true"></i>
+        <i class="bi bi-sun-fill theme-icon-light" aria-hidden="true"></i>
+      </button>
+    </div>
+  </nav>
+
+  <div class="ticker" role="marquee" aria-label="Announcements">
+    <div class="ticker-track">
+      <% for (let i = 0; i < 2; i++) { %>
+      <span <%- i ? 'aria-hidden="true"' : '' %>>
+        <i class="bi bi-megaphone-fill" aria-hidden="true"></i> Welcome to the Online Job Card Portal designed &amp; developed by IACS CREW!
+        <span class="sep">|</span>
+        In case of any query, please feel free to reach out to us at <a href="mailto:<%= HELPDESK.email %>"><%= HELPDESK.email %></a> or contact us at Extension Number <%= HELPDESK.extension %>
+        <span class="sep">|</span>
+      </span>
+      <% } %>
+    </div>
+  </div>
+</header>

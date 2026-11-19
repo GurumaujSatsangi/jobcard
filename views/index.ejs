@@ -1,0 +1,47 @@
+<%- include("partials/head") %>
+<%- include("partials/header") %>
+
+<main class="flex-grow-1">
+  <section class="hero">
+    <div class="container py-10 text-center">
+      <p class="hero-kicker mb-2">Deemed to be University under de novo category under Section 3 of the UGC Act, 1956</p>
+      <h1 class="hero-title mb-3">Online Job Card Portal</h1>
+      <p class="hero-lead mb-0 mx-auto">
+        Effortlessly apply and stay updated on job cards for AC, Glass Blowing, Mechanical, Electrical and Intercom / EPABX Sections!
+      </p>
+    </div>
+  </section>
+
+  <section class="container services" aria-label="Services">
+    <div class="row g-6 justify-content-center">
+      <div class="col-12 md:col-6 lg:col-5">
+        <article class="card service-card h-100">
+          <div class="card-body p-7 d-flex flex-column">
+            <span class="service-icon theme-primary mb-4"><i class="bi bi-file-earmark-plus" aria-hidden="true"></i></span>
+            <h2 class="h4 mb-2">New Job Card Application</h2>
+            <p class="fg-3 mb-6">Apply for a New Job Card!</p>
+            <button type="button" class="btn btn-solid theme-primary btn-lg mt-auto" data-bs-toggle="dialog" data-bs-target="#newJobCardDialog">
+              Apply Now <i class="bi bi-arrow-right" aria-hidden="true"></i>
+            </button>
+          </div>
+        </article>
+      </div>
+      <div class="col-12 md:col-6 lg:col-5">
+        <article class="card service-card h-100">
+          <div class="card-body p-7 d-flex flex-column">
+            <span class="service-icon theme-success mb-4"><i class="bi bi-search" aria-hidden="true"></i></span>
+            <h2 class="h4 mb-2">Check Job Card Application Status</h2>
+            <p class="fg-3 mb-6">Check Status of your already applied Job Card using Application Reference Number (ARN)!</p>
+            <button type="button" class="btn btn-solid theme-success btn-lg mt-auto" data-bs-toggle="dialog" data-bs-target="#statusDialog">
+              Check Status <i class="bi bi-arrow-right" aria-hidden="true"></i>
+            </button>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+</main>
+
+<%- include("partials/status-dialog") %>
+<%- include("partials/new-job-card-dialog") %>
+<%- include("partials/footer") %>
