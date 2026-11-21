@@ -1,6 +1,6 @@
 <dialog class="dialog dialog-lg dialog-scrollable" id="statusDialog" aria-labelledby="statusDialogTitle">
   <div class="dialog-header">
-    <h2 class="dialog-title" id="statusDialogTitle"><i class="bi bi-search me-2" aria-hidden="true"></i>Check Job Card Application Status</h2>
+    <h2 class="dialog-title" id="statusDialogTitle">Check Application Status</h2>
     <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
   </div>
   <div class="dialog-body">
@@ -8,13 +8,11 @@
       <label class="form-label" for="arnInput">Application Reference Number (ARN) <span class="req">*</span></label>
       <div class="input-group">
         <input type="text" class="form-control text-uppercase" id="arnInput" name="arn" placeholder="e.g. JC2026000001" required autocomplete="off">
-        <button type="submit" class="btn btn-solid theme-primary" id="statusFetchBtn">
-          <i class="bi bi-cloud-download" aria-hidden="true"></i> Fetch
-        </button>
+        <button type="submit" class="btn btn-solid theme-primary" id="statusFetchBtn">Fetch</button>
       </div>
       <div class="invalid-feedback" id="arnFeedback">Please enter your ARN.</div>
     </form>
 
-    <div id="statusResult" class="mt-5" hidden></div>
+    <div id="statusResult" class="mt-6" hidden></div>
   </div>
 </dialog>

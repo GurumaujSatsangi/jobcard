@@ -1,17 +1,16 @@
 <%- include("../partials/head") %>
-<%- include("../partials/header", { hideTicker: true }) %>
+<%- include("../partials/header", { hideNotice: true }) %>
 
-<main class="flex-grow-1 tech-page">
-  <div class="container py-8">
-    <div class="card tech-login-card mx-auto">
-      <div class="card-body p-7 text-center">
-        <span class="tech-login-icon mb-4"><i class="bi bi-person-lock" aria-hidden="true"></i></span>
-        <h1 class="h3 mb-2">Technician Login</h1>
-        <p class="fg-3 mb-6">Enter your 6-digit passcode</p>
+<main class="flex-grow-1 page">
+  <div class="container">
+    <div class="panel signin">
+      <div class="panel-body">
+        <h1>Technician sign in</h1>
+        <p class="sub">Enter your 6-digit passcode to continue</p>
 
         <% if (error) { %>
-          <div class="alert theme-danger text-start mb-5" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i><%= error %>
+          <div class="flash flash-err text-start" role="alert">
+            <i class="bi bi-exclamation-circle" aria-hidden="true"></i><span><%= error %></span>
           </div>
         <% } %>
 
@@ -22,14 +21,10 @@
                    inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autofocus
                    autocomplete="one-time-code" aria-describedby="passcodeHelp">
           </div>
-          <button type="submit" class="btn btn-solid theme-primary btn-lg w-100" id="techLoginBtn">
-            <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Log in
-          </button>
+          <button type="submit" class="btn btn-solid theme-primary btn-lg w-100" id="techLoginBtn">Sign in</button>
         </form>
 
-        <p class="small fg-3 mt-6 mb-0" id="passcodeHelp">
-          Forgot your passcode? Call the Help Desk at Extension <strong><%= HELPDESK.extension %></strong>.
-        </p>
+        <p class="help" id="passcodeHelp">Forgot your passcode? Call the Help Desk at Extension <strong><%= HELPDESK.extension %></strong>.</p>
       </div>
     </div>
   </div>

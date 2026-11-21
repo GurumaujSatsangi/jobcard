@@ -37,20 +37,18 @@
   const arnInput = $("#arnInput");
   const statusResult = $("#statusResult");
 
-  const STEP_ICONS = { submitted: "send-check", assigned: "person-gear", material: "box-seam", closed: "check2-circle" };
-
   function stepDetails(step) {
     const d = step.details;
     if (!d) return "";
     if (step.key === "assigned") {
       return `<div class="step-details">
-        <div><i class="bi bi-person" aria-hidden="true"></i> <span class="fg-3">Technician:</span> ${esc(d.technician) || "—"}</div>
-        <div><i class="bi bi-telephone" aria-hidden="true"></i> <span class="fg-3">Contact:</span> ${esc(d.phone) || "—"}</div>
+        <div><span class="label">Technician:</span> ${esc(d.technician) || "—"}</div>
+        <div><span class="label">Contact:</span> Ext. ${esc(d.phone) || "—"}</div>
       </div>`;
     }
     if (step.key === "material") {
       return `<div class="step-details">
-        <div><i class="bi bi-tools" aria-hidden="true"></i> <span class="fg-3">Materials:</span> ${esc(d.materials) || "—"}</div>
+        <div><span class="label">Materials:</span> ${esc(d.materials) || "—"}</div>
       </div>`;
     }
     return "";
@@ -63,10 +61,10 @@
       .map((s, i) => {
         const state = s.done ? "done" : i === currentIdx ? "current" : "pending";
         const label = s.done ? s.at : i === currentIdx ? "In progress" : "Pending";
-        return `<li class="stepper-item ${s.done ? "active theme-success" : ""} is-${state}" ${i === currentIdx ? 'aria-current="step"' : ""}>
+        return `<li class="stepper-item ${s.done ? "active" : ""} is-${state}" ${i === currentIdx ? 'aria-current="step"' : ""}>
           <div class="step-body">
-            <div class="step-title"><i class="bi bi-${STEP_ICONS[s.key]}" aria-hidden="true"></i> ${esc(s.title)}</div>
-            <div class="step-time ${s.done ? "" : "fg-3"}">${s.done ? '<i class="bi bi-clock" aria-hidden="true"></i> ' : ""}${esc(label)}</div>
+            <div class="step-title">${esc(s.title)}</div>
+            <div class="step-time">${esc(label)}</div>
             ${stepDetails(s)}
           </div>
         </li>`;
@@ -81,13 +79,13 @@
     ].filter(Boolean);
 
     return `
-      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
-        <h3 class="h6 mb-0">${esc(d.section)}</h3>
-        <span class="badge ${d.steps[3].done ? "theme-success" : "theme-primary"} status-badge">${esc(d.status)}</span>
+      <div class="status-head">
+        <h3>${esc(d.section)}</h3>
+        <span class="pill ${d.steps[3].done ? "pill-done" : ""}">${esc(d.status)}</span>
       </div>
-      <ol class="stepper job-stepper mb-6" aria-label="Job card progress">${stepper}</ol>
+      <ol class="stepper job-stepper" aria-label="Job card progress">${stepper}</ol>
       <div class="table-responsive">
-        <table class="table table-bordered mb-0 ac-table">
+        <table class="kv-table">
           <tbody>${rows.map(([k, v]) => `<tr><th scope="row">${k}</th><td>${v}</td></tr>`).join("")}</tbody>
         </table>
       </div>`;
@@ -107,7 +105,7 @@
       const d = await api(`/api/job-cards/${encodeURIComponent(arn)}`);
       statusResult.innerHTML = renderStatus(d);
     } catch (err) {
-      statusResult.innerHTML = `<div class="alert theme-danger mb-0" role="alert"><i class="bi bi-exclamation-triangle me-2"></i>${esc(err.message)}</div>`;
+      statusResult.innerHTML = `<div class="flash flash-err mb-0" role="alert"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span>${esc(err.message)}</span></div>`;
     } finally {
       setLoading(btn, false);
     }
@@ -226,7 +224,7 @@
   function renderFiles() {
     fileList.innerHTML = selectedFiles
       .map((f, i) => `<li><i class="bi bi-paperclip"></i><span class="name">${esc(f.name)}</span>
-        <span class="fg-3">${fmtSize(f.size)}</span>
+        <span class="text-muted-2">${fmtSize(f.size)}</span>
         <button type="button" class="btn-close" data-remove="${i}" aria-label="Remove ${esc(f.name)}"></button></li>`)
       .join("");
   }
@@ -273,7 +271,7 @@
       else if (!form.detailsCorrect.value) fail("detailsCorrect");
     }
     if (!ok) {
-      formError.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>Please correct the highlighted fields.';
+      formError.innerHTML = '<i class="bi bi-exclamation-circle" aria-hidden="true"></i><span>Please correct the highlighted fields.</span>';
       formError.hidden = false;
       $(".is-invalid", form)?.focus();
     }
@@ -300,7 +298,7 @@
       $("#jobCardCancelBtn").textContent = "Close";
     } catch (err) {
       Object.entries(err.body?.errors ?? {}).forEach(([k, v]) => showFieldError(k, v));
-      formError.innerHTML = `<i class="bi bi-exclamation-triangle me-2"></i>${esc(err.message)}`;
+      formError.innerHTML = `<i class="bi bi-exclamation-circle" aria-hidden="true"></i><span>${esc(err.message)}</span>`;
       formError.hidden = false;
       formError.scrollIntoView({ behavior: "smooth", block: "nearest" });
     } finally {

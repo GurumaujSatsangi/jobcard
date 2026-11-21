@@ -1,49 +1,31 @@
 <header class="site-header">
-  <nav class="navbar" aria-label="Main">
-    <div class="container d-flex align-items-center gap-3 py-2">
-      <a class="navbar-brand d-flex align-items-center gap-3 me-auto" href="/">
-        <img src="/img/logo.png" alt="IACS logo" width="52" height="52" class="brand-logo">
-        <span class="d-flex flex-column lh-sm">
-          <span class="brand-title">Indian Association for the Cultivation of Science</span>
-          <span class="brand-sub">Online Job Card Portal</span>
-        </span>
-      </a>
+  <div class="container bar">
+    <a class="brand" href="/">
+      <img src="/img/logo.png" alt="IACS logo" width="34" height="34">
+      <span class="brand-name">IACS <small><span class="d-none sm:d-inline">Online </span>Job Card Portal</small></span>
+    </a>
+    <nav class="header-links" aria-label="Main">
       <% if (locals.technician) { %>
-        <span class="header-user d-none sm:d-inline-flex align-items-center gap-2">
-          <i class="bi bi-person-circle" aria-hidden="true"></i> <%= technician.name %>
-        </span>
+        <span class="header-user d-none sm:d-inline"><i class="bi bi-person-circle" aria-hidden="true"></i> <%= technician.name %></span>
         <form method="post" action="/technician/logout" class="m-0">
-          <button type="submit" class="btn btn-outline theme-secondary btn-sm">
-            <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Log out
-          </button>
+          <button type="submit" class="header-link"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Log out</button>
         </form>
       <% } else { %>
-        <a class="btn btn-outline theme-secondary btn-sm d-none md:d-inline-flex" href="https://www.iacs.res.in/" target="_blank" rel="noopener">
-          <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> IACS Home
-        </a>
-        <a class="btn btn-outline theme-secondary btn-sm" href="/technician/login">
-          <i class="bi bi-person-gear" aria-hidden="true"></i> <span class="d-none sm:d-inline">Technician </span>Login
-        </a>
+        <a class="header-link" href="/technician/login"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> <span class="d-none sm:d-inline">Technician </span>Login</a>
       <% } %>
-      <button type="button" class="btn btn-subtle theme-secondary btn-icon" id="themeToggle" aria-label="Toggle colour mode" title="Toggle light / dark mode">
-        <i class="bi bi-moon-stars-fill theme-icon-dark" aria-hidden="true"></i>
-        <i class="bi bi-sun-fill theme-icon-light" aria-hidden="true"></i>
+      <button type="button" class="header-link" id="themeToggle" aria-label="Switch light or dark mode" title="Switch light / dark mode">
+        <i class="bi bi-moon theme-icon-dark" aria-hidden="true"></i>
+        <i class="bi bi-sun theme-icon-light" aria-hidden="true"></i>
       </button>
-    </div>
-  </nav>
-
-  <% if (!locals.hideTicker) { %>
-  <div class="ticker" role="marquee" aria-label="Announcements">
-    <div class="ticker-track">
-      <% for (let i = 0; i < 2; i++) { %>
-      <span <%- i ? 'aria-hidden="true"' : '' %>>
-        <i class="bi bi-megaphone-fill" aria-hidden="true"></i> Welcome to the Online Job Card Portal designed &amp; developed by IACS CREW!
-        <span class="sep">|</span>
-        In case of any query, please feel free to reach out to us at <a href="mailto:<%= HELPDESK.email %>"><%= HELPDESK.email %></a> or contact us at Extension Number <%= HELPDESK.extension %>
-        <span class="sep">|</span>
-      </span>
-      <% } %>
-    </div>
+    </nav>
   </div>
-  <% } %>
 </header>
+
+<% if (!locals.hideNotice) { %>
+<div class="notice">
+  <div class="container">
+    <i class="bi bi-info-circle" aria-hidden="true"></i>
+    For any query, write to <a href="mailto:<%= HELPDESK.email %>"><%= HELPDESK.email %></a> or call Extension <%= HELPDESK.extension %>.
+  </div>
+</div>
+<% } %>

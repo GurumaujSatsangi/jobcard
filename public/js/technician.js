@@ -12,7 +12,7 @@
       submitted = true;
       const btn = document.getElementById("techLoginBtn");
       btn.disabled = true;
-      btn.innerHTML = '<span class="spinner-border spinner-sm" aria-hidden="true"></span> Logging in…';
+      btn.innerHTML = '<span class="spinner-border spinner-sm" aria-hidden="true"></span> Signing in…';
       loginForm.submit();
     };
     otp?.addEventListener("complete.bs.otpInput", submit);

@@ -1,31 +1,7 @@
 <footer class="site-footer mt-auto">
-  <div class="container py-8">
-    <div class="row g-6">
-      <div class="col-12 md:col-6">
-        <h2 class="h5 mb-3"><i class="bi bi-life-preserver me-2" aria-hidden="true"></i>Help Desk</h2>
-        <p class="mb-2">In case of any queries, please feel free to reach out to us at
-          <a href="mailto:<%= HELPDESK.email %>"><%= HELPDESK.email %></a>
-          or contact us at Extension Number <strong><%= HELPDESK.extension %></strong>.</p>
-        <p class="mb-0 small fg-3">
-          Indian Association for the Cultivation of Science, 2A &amp; 2B Raja S. C. Mullick Road, Jadavpur, Kolkata 700032
-        </p>
-      </div>
-      <div class="col-12 md:col-6">
-        <h2 class="h5 mb-3"><i class="bi bi-telephone me-2" aria-hidden="true"></i>Section Extensions</h2>
-        <table class="table table-sm mb-0 footer-table">
-          <tbody>
-            <% SECTIONS.forEach(s => { %>
-            <tr><td><%= s.label %></td><td class="text-end fw-semibold"><%= s.extension %></td></tr>
-            <% }) %>
-          </tbody>
-        </table>
-      </div>
-    </div>
-    <hr class="my-6">
-    <div class="d-flex flex-wrap justify-content-between gap-2 small fg-3">
-      <span>&copy; <%= year %> IACS CREW. All rights reserved.</span>
-      <a href="https://www.iacs.res.in/" target="_blank" rel="noopener">Go Back to IACS Home Page</a>
-    </div>
+  <div class="container inner">
+    <span>&copy; <%= year %> Indian Association for the Cultivation of Science &middot; Designed &amp; developed by IACS CREW</span>
+    <a href="https://www.iacs.res.in/" target="_blank" rel="noopener">iacs.res.in</a>
   </div>
 </footer>
 
