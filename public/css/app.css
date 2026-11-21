@@ -149,6 +149,10 @@
 
   /* ---------- Dialogs ---------- */
   .dialog { border-radius: var(--radius-card); --bs-dialog-bg: var(--surface); }
+  /* Bootstrap 6 keeps closed dialogs laid out (only invisible) for its exit
+     animation, so their content stretched the page below the footer. It keeps
+     [open] until that animation ends, so hiding closed ones is safe. */
+  .dialog:not([open]) { display: none; }
   .dialog-header { padding: 1rem 1.5rem; }
   .dialog-title { font-size: 18px; font-weight: 500; color: var(--text-strong); }
   .dialog-body { padding: 1.5rem; }
