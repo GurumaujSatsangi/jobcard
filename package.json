@@ -8,7 +8,8 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "technician": "node scripts/technician.js",
-    "seed:demo": "node scripts/seed-demo.js"
+    "seed:demo": "node scripts/seed-demo.js",
+    "import:ac": "node scripts/import-ac-units.js"
   },
   "license": "ISC",
   "dependencies": {
@@ -16,12 +17,13 @@
     "bootstrap": "^6.0.0-alpha.1",
     "bootstrap-icons": "^1.13.2",
     "cookie-parser": "^1.4.7",
+    "csv-parse": "^7.0.3",
     "dotenv": "^18.0.10",
     "ejs": "^7.0.2",
     "express": "^5.3.0",
     "express-rate-limit": "^8.7.5",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.5.0",
-    "pg": "^8.23.1"
+    "mysql2": "^3.24.6"
   }
 }

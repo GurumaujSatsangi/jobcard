@@ -1,6 +1,6 @@
 # IACS Online Job Card Portal
 
-Express + EJS + PostgreSQL rebuild of the IACS CREW job card portal. Frontend is plain HTML, CSS and JS on **Bootstrap 6.0.0-alpha.1** (served from `node_modules`, no CDN).
+Express + EJS + MySQL/MariaDB rebuild of the IACS CREW job card portal. Frontend is plain HTML, CSS and JS on **Bootstrap 6.0.0-alpha.1** (served from `node_modules`, no CDN).
 
 ## Run
 
@@ -11,7 +11,34 @@ npm start          # or: npm run dev  (auto-restart on change)
 
 Open http://localhost:3000. Tables are created on first start (`src/db.js`), and three sample AC records (`AC-0001` to `AC-0003`) are seeded so the CREW lookup can be tried.
 
-`.env` needs: `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_HOST`, `DB_PORT`, optional `PORT`.
+`.env` needs: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `PASSCODE_PEPPER` (see `.env.example`).
+
+## Database
+
+MySQL 8 or MariaDB 10.6+. Create an empty database with collation `utf8mb4_unicode_ci` and a user with all privileges on it. The app creates its tables on first start. Times are stored in UTC and shown in India time.
+
+On cPanel:
+
+- Create the database and user under **MySQL Databases** (cPanel adds your account prefix, e.g. `fcroveif_`).
+- If the app runs on the same server (e.g. **Setup Node.js App**), use `DB_HOST=localhost`.
+- If it runs elsewhere, add that machine's IP under **Remote MySQL** and use the server's hostname. The connection is unencrypted unless the server supports SSL and you set `DB_SSL=true`, so prefer running the app on the same server or connecting through an SSH tunnel.
+
+### AC inventory
+
+`ac_units` holds the IACS AC data sheet ("FINAL DATA-SHEET -IACS-AC"). Export its **AC** tab as CSV and load it:
+
+```bash
+npm run import:ac -- "path/to/FINAL DATA-SHEET -IACS-AC ... - AC.csv" --dry-run   # check first
+npm run import:ac -- "path/to/FINAL DATA-SHEET -IACS-AC ... - AC.csv"
+```
+
+- Rows are added or updated by **CREW SR No.**, so re-running with an updated sheet is safe.
+- Reserved numbers with no AC details are skipped; "Not Available" becomes empty.
+- Values that can't be read (e.g. a date typed as `19.11.20224`) are left empty and listed so the sheet can be fixed.
+- An AC listed on two rows (same unit for two rooms) is merged into one record.
+- `QTY` and `Total` are not stored (always 1 / 1.00 in the sheet).
+
+People can type the CREW number in full (`IACS/CREW/AC/00007`) or just the number (`7`, `00007`).
 
 ## Technicians
 
@@ -42,7 +69,7 @@ The passcode is printed once and stored only as a hash. For local testing, `npm 
 
 ```
 src/server.js         Express app, static files, EJS
-src/db.js             pg pool + schema (ac_units, job_cards, job_card_attachments)
+src/db.js             mysql2 pool + schema (ac_units, job_cards, technicians, sessions, ARN counter)
 src/constants.js      Sections, item types, help-desk details
 src/routes/api.js     JSON API + file uploads (multer -> uploads/)
 src/routes/technician.js  Technician login, job list, receipt upload

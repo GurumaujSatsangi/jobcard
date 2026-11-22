@@ -4,7 +4,7 @@ import rateLimit from "express-rate-limit";
 import path from "node:path";
 import fs from "node:fs";
 import crypto from "node:crypto";
-import { pool, query } from "../db.js";
+import { query, withTransaction } from "../db.js";
 import { STATUS, sectionLabel } from "../constants.js";
 import {
   PASSCODE_LENGTH,
@@ -98,7 +98,7 @@ async function openJobsFor(tech) {
     `SELECT arn, first_name, last_name, contact_number, department, crew_serial_number,
             description, assigned_at
        FROM job_cards
-      WHERE technician_id = $1 AND section = $2 AND status <> $3 AND assigned_at IS NOT NULL
+      WHERE technician_id = ? AND section = ? AND status <> ? AND assigned_at IS NOT NULL
       ORDER BY assigned_at ASC`,
     [tech.id, tech.section, STATUS.CLOSED],
   );
@@ -171,35 +171,36 @@ router.post("/job-cards/:arn/receipt", requireTechnician, (req, res, next) => {
     if (uploadErr) { await discard(); return fail(res, "upload"); }
     if (!file) return fail(res, "nofile");
 
-    const client = await pool.connect();
     try {
-      await client.query("BEGIN");
-      const updated = await client.query(
-        `UPDATE job_cards
-            SET status = $1, closed_at = now(), updated_at = now()
-          WHERE arn = $2 AND technician_id = $3 AND section = $4 AND status <> $1 AND assigned_at IS NOT NULL
-          RETURNING id`,
-        [STATUS.CLOSED, arn, req.technician.id, req.technician.section],
-      );
-      if (!updated.rowCount) {
-        await client.query("ROLLBACK");
+      const closed = await withTransaction(async (tx) => {
+        // Lock the job card, and only if it is this technician's open job.
+        const { rows } = await tx.query(
+          `SELECT id FROM job_cards
+            WHERE arn = ? AND technician_id = ? AND section = ? AND status <> ? AND assigned_at IS NOT NULL
+            FOR UPDATE`,
+          [arn, req.technician.id, req.technician.section, STATUS.CLOSED],
+        );
+        if (!rows[0]) return false;
+        await tx.query(
+          "UPDATE job_cards SET status = ?, closed_at = UTC_TIMESTAMP(3), updated_at = UTC_TIMESTAMP(3) WHERE id = ?",
+          [STATUS.CLOSED, rows[0].id],
+        );
+        await tx.query(
+          `INSERT INTO job_card_attachments (job_card_id, original_name, stored_name, mime_type, size_bytes, kind)
+           VALUES (?, ?, ?, ?, ?, 'SIGNED_RECEIPT')`,
+          [rows[0].id, file.originalname, `receipts/${file.filename}`, file.mimetype, file.size],
+        );
+        return true;
+      });
+      if (!closed) {
         await discard();
         return fail(res, "notfound");
       }
-      await client.query(
-        `INSERT INTO job_card_attachments (job_card_id, original_name, stored_name, mime_type, size_bytes, kind)
-         VALUES ($1, $2, $3, $4, $5, 'SIGNED_RECEIPT')`,
-        [updated.rows[0].id, file.originalname, `receipts/${file.filename}`, file.mimetype, file.size],
-      );
-      await client.query("COMMIT");
       setFlash(res, { type: "done", arn });
       res.redirect("/technician");
     } catch (err) {
-      await client.query("ROLLBACK").catch(() => {});
       await discard();
       next(err);
-    } finally {
-      client.release();
     }
   });
 });

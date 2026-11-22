@@ -27,7 +27,7 @@ const { positionals, values } = parseArgs({
 async function uniquePasscode() {
   for (let i = 0; i < 50; i++) {
     const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
-    const { rowCount } = await query("SELECT 1 FROM technician_accounts WHERE passcode_lookup = $1", [passcodeLookup(code)]);
+    const { rowCount } = await query("SELECT 1 FROM technician_accounts WHERE passcode_lookup = ?", [passcodeLookup(code)]);
     if (!rowCount) return code;
   }
   throw new Error("Could not generate a unique passcode.");
@@ -48,29 +48,29 @@ try {
       fail(`--section must be one of: ${SECTIONS.map((s) => s.value).join(", ")}`);
     else {
       const code = await uniquePasscode();
-      const { rows } = await query(
+      const { insertId } = await query(
         `INSERT INTO technician_accounts (name, phone, section, passcode_lookup, passcode_hash)
-         VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+         VALUES (?,?,?,?,?)`,
         [name, phone, section, passcodeLookup(code), await hashPasscode(code)],
       );
-      console.log(`Created technician #${rows[0].id} (${name}, ${section}).\nPasscode: ${code}\nGive this to the technician; it will not be shown again.`);
+      console.log(`Created technician #${insertId} (${name}, ${section}).\nPasscode: ${code}\nGive this to the technician; it will not be shown again.`);
     }
   } else if (cmd === "reset-passcode") {
     const code = await uniquePasscode();
     const { rowCount } = await query(
-      "UPDATE technician_accounts SET passcode_lookup = $2, passcode_hash = $3 WHERE id = $1",
-      [values.id, passcodeLookup(code), await hashPasscode(code)],
+      "UPDATE technician_accounts SET passcode_lookup = ?, passcode_hash = ? WHERE id = ?",
+      [passcodeLookup(code), await hashPasscode(code), values.id],
     );
     if (!rowCount) fail("No technician with that --id");
     else {
-      await query("UPDATE technician_sessions SET revoked_at = now() WHERE technician_id = $1 AND revoked_at IS NULL", [values.id]);
+      await query("UPDATE technician_sessions SET revoked_at = UTC_TIMESTAMP(3) WHERE technician_id = ? AND revoked_at IS NULL", [values.id]);
       console.log(`New passcode for technician #${values.id}: ${code}\nAll their existing logins were signed out.`);
     }
   } else if (cmd === "deactivate") {
-    const { rowCount } = await query("UPDATE technician_accounts SET active = FALSE WHERE id = $1", [values.id]);
+    const { rowCount } = await query("UPDATE technician_accounts SET active = 0 WHERE id = ?", [values.id]);
     if (!rowCount) fail("No technician with that --id");
     else {
-      await query("UPDATE technician_sessions SET revoked_at = now() WHERE technician_id = $1 AND revoked_at IS NULL", [values.id]);
+      await query("UPDATE technician_sessions SET revoked_at = UTC_TIMESTAMP(3) WHERE technician_id = ? AND revoked_at IS NULL", [values.id]);
       console.log(`Technician #${values.id} deactivated and signed out.`);
     }
   } else if (cmd === "list") {

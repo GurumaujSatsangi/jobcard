@@ -72,7 +72,7 @@ export async function verifyPasscode(passcode) {
     return null;
   }
   const { rows } = await query(
-    "SELECT * FROM technician_accounts WHERE passcode_lookup = $1 AND active",
+    "SELECT * FROM technician_accounts WHERE passcode_lookup = ? AND active = 1",
     [passcodeLookup(passcode)],
   );
   const tech = rows[0];
@@ -85,15 +85,15 @@ export async function startSession(res, tech, req) {
   const secret = newRefreshSecret();
   await query(
     `INSERT INTO technician_sessions (id, technician_id, refresh_hash, expires_at, user_agent, ip)
-     VALUES ($1, $2, $3, now() + $4 * interval '1 millisecond', $5, $6)`,
-    [sid, tech.id, sha256(secret), REFRESH_TTL_MS, req.get("user-agent")?.slice(0, 300) ?? null, req.ip],
+     VALUES (?, ?, ?, UTC_TIMESTAMP(3) + INTERVAL ? SECOND, ?, ?)`,
+    [sid, tech.id, sha256(secret), Math.round(REFRESH_TTL_MS / 1000), req.get("user-agent")?.slice(0, 300) ?? null, req.ip],
   );
   setAuthCookies(res, signAccess(tech.id, sid), `${sid}.${secret}`);
 }
 
 export async function endSession(req, res) {
   const sid = sessionIdFromCookies(req);
-  if (sid) await query("UPDATE technician_sessions SET revoked_at = now() WHERE id = $1 AND revoked_at IS NULL", [sid]);
+  if (sid) await query("UPDATE technician_sessions SET revoked_at = UTC_TIMESTAMP(3) WHERE id = ? AND revoked_at IS NULL", [sid]);
   clearAuthCookies(res);
 }
 
@@ -113,8 +113,8 @@ async function loadActiveSession(sid, techId) {
     `SELECT s.*, t.id AS tech_id, t.name, t.phone, t.section
        FROM technician_sessions s
        JOIN technician_accounts t ON t.id = s.technician_id
-      WHERE s.id = $1 AND s.revoked_at IS NULL AND s.expires_at > now() AND t.active
-        ${techId ? "AND t.id = $2" : ""}`,
+      WHERE s.id = ? AND s.revoked_at IS NULL AND s.expires_at > UTC_TIMESTAMP(3) AND t.active = 1
+        ${techId ? "AND t.id = ?" : ""}`,
     techId ? [sid, techId] : [sid],
   );
   return rows[0] ?? null;
@@ -142,7 +142,7 @@ async function refresh(req, res) {
       Date.now() - new Date(session.rotated_at).getTime() < ROTATION_GRACE_MS;
     if (!isRecentPrev) {
       // An old refresh token was replayed: assume it leaked and kill the session.
-      await query("UPDATE technician_sessions SET revoked_at = now() WHERE id = $1", [sid]);
+      await query("UPDATE technician_sessions SET revoked_at = UTC_TIMESTAMP(3) WHERE id = ?", [sid]);
       return null;
     }
     // A parallel request already rotated; just hand out a fresh access token.
@@ -150,13 +150,21 @@ async function refresh(req, res) {
     return toTechnician(session);
   }
 
+  // Rotate only if nobody rotated since we read the row (MySQL applies SET
+  // left to right, so prev_refresh_hash receives the old value).
   const nextSecret = newRefreshSecret();
-  await query(
+  const rotated = await query(
     `UPDATE technician_sessions
-        SET prev_refresh_hash = refresh_hash, refresh_hash = $2, rotated_at = now(), last_used_at = now()
-      WHERE id = $1`,
-    [sid, sha256(nextSecret)],
+        SET prev_refresh_hash = refresh_hash, refresh_hash = ?,
+            rotated_at = UTC_TIMESTAMP(3), last_used_at = UTC_TIMESTAMP(3)
+      WHERE id = ? AND refresh_hash = ?`,
+    [sha256(nextSecret), sid, session.refresh_hash],
   );
+  if (!rotated.rowCount) {
+    // A parallel request rotated first; its response carries the new refresh token.
+    res.cookie(ACCESS_COOKIE, signAccess(session.tech_id, sid), { ...cookieBase, path: "/", maxAge: ACCESS_TTL_SEC * 1000 });
+    return toTechnician(session);
+  }
   setAuthCookies(res, signAccess(session.tech_id, sid), `${sid}.${nextSecret}`);
   return toTechnician(session);
 }

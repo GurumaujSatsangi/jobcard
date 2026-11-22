@@ -27,5 +27,14 @@ export const HELPDESK = {
   extension: "1703",
 };
 
+// CREW serial numbers look like "IACS/CREW/AC/00001". People may type just the
+// number ("1", "00001") or the full code in any case; turn all of those into
+// the full code. Anything else is returned upper-cased and simply won't match.
+export function normalizeCrewSerial(input) {
+  const s = String(input ?? "").trim();
+  const m = s.match(/^(?:IACS\s*\/\s*CREW\s*\/\s*AC\s*\/\s*)?0*(\d{1,5})$/i);
+  return m ? `IACS/CREW/AC/${m[1].padStart(5, "0")}` : s.toUpperCase();
+}
+
 export const sectionLabel = (value) => SECTIONS.find((s) => s.value === value)?.label ?? value;
 export const itemTypeLabel = (value) => AC_ITEM_TYPES.find((t) => t.value === value)?.label ?? value;

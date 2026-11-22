@@ -193,11 +193,13 @@
           `A Job Card (${activeArn}) for this Air Conditioner is already active and not yet completed.`);
       }
       const rows = [
-        ["Serial Number", ac.crewSerialNumber],
+        ["CREW Serial No.", ac.crewSerialNumber],
         ["Brand", ac.brand],
+        ["Type / Capacity", ac.type],
         ["Faculty / Staff / In-charge", ac.inCharge],
         ["School", ac.school],
         ["Room No.", ac.roomNumber],
+        ["Warranty", ac.warranty],
         ["AMC", ac.amc],
         ["AMC Work Order No.", ac.amcWorkOrderNo],
         ["AMC Start Date", ac.amcStartDate],

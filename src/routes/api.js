@@ -3,8 +3,8 @@ import multer from "multer";
 import path from "node:path";
 import fs from "node:fs/promises";
 import crypto from "node:crypto";
-import { pool, query } from "../db.js";
-import { SECTIONS, AC_ITEM_TYPES, OFFICIAL_EMAIL_DOMAIN, STATUS, sectionLabel, itemTypeLabel } from "../constants.js";
+import { query, withTransaction, nextArnNumber } from "../db.js";
+import { SECTIONS, AC_ITEM_TYPES, OFFICIAL_EMAIL_DOMAIN, STATUS, sectionLabel, itemTypeLabel, normalizeCrewSerial } from "../constants.js";
 
 export const UPLOAD_DIR = path.resolve("uploads");
 
@@ -25,16 +25,23 @@ const upload = multer({
 
 const router = Router();
 
+// DATE columns arrive as "YYYY-MM-DD"; format them without shifting the day.
 const fmtDate = (d) =>
-  d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : null;
+  d ? new Date(`${d}T00:00:00Z`).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }) : null;
 
+// What the indentor sees to confirm it's the right AC.
 function acView(row) {
+  const capacity = row.capacity_tr ? `${row.capacity_tr}${/^[\d.]+$/.test(row.capacity_tr) ? " Ton" : ""}` : null;
   return {
     crewSerialNumber: row.crew_serial_number,
     brand: row.brand,
+    type: [row.ac_type, capacity].filter(Boolean).join(", ") || null,
     inCharge: row.in_charge,
     school: row.school,
     roomNumber: row.room_number,
+    warranty: row.under_warranty
+      ? `Yes${row.warranty_end_date ? `, until ${fmtDate(row.warranty_end_date)}` : ""}`
+      : row.under_warranty === 0 ? "No" : null,
     amc: row.amc,
     amcWorkOrderNo: row.amc_work_order_no,
     amcStartDate: fmtDate(row.amc_start_date),
@@ -42,16 +49,16 @@ function acView(row) {
   };
 }
 
-// Look up an AC by its CREW serial number.
+// Look up an AC by its CREW serial number ("IACS/CREW/AC/00001", "00001" or "1").
 router.get("/ac/:crew", async (req, res, next) => {
   try {
-    const crew = req.params.crew.trim().toUpperCase();
-    const { rows } = await query("SELECT * FROM ac_units WHERE UPPER(crew_serial_number) = $1", [crew]);
+    const crew = normalizeCrewSerial(req.params.crew);
+    const { rows } = await query("SELECT * FROM ac_units WHERE crew_serial_number = ?", [crew]);
     if (!rows[0]) {
       return res.status(404).json({ error: "No Air Conditioner found for this CREW Serial Number." });
     }
     const active = await query(
-      "SELECT arn FROM job_cards WHERE crew_serial_number = $1 AND status <> $2 LIMIT 1",
+      "SELECT arn FROM job_cards WHERE crew_serial_number = ? AND status <> ? LIMIT 1",
       [rows[0].crew_serial_number, STATUS.CLOSED],
     );
     res.json({ ac: acView(rows[0]), activeArn: active.rows[0]?.arn ?? null });
@@ -67,7 +74,7 @@ router.get("/job-cards/:arn", async (req, res, next) => {
     const { rows } = await query(
       `SELECT jc.*, ta.name AS ta_name, ta.phone AS ta_phone
          FROM job_cards jc LEFT JOIN technician_accounts ta ON ta.id = jc.technician_id
-        WHERE jc.arn = $1`,
+        WHERE jc.arn = ?`,
       [arn],
     );
     const jc = rows[0];
@@ -122,7 +129,7 @@ function validate(body) {
     department: s("department"),
     section: s("section"),
     itemType: s("itemType") || null,
-    crewSerialNumber: s("crewSerialNumber").toUpperCase() || null,
+    crewSerialNumber: s("crewSerialNumber") ? normalizeCrewSerial(s("crewSerialNumber")) : null,
     detailsCorrect: s("detailsCorrect"),
     description: s("description"),
   };
@@ -173,58 +180,55 @@ router.post("/job-cards", (req, res, next) => {
       return res.status(400).json({ error: "Please correct the highlighted fields.", errors });
     }
 
-    const client = await pool.connect();
     try {
-      await client.query("BEGIN");
-
-      if (data.crewSerialNumber) {
-        const ac = await client.query("SELECT 1 FROM ac_units WHERE crew_serial_number = $1", [data.crewSerialNumber]);
-        if (!ac.rowCount) {
-          throw Object.assign(new Error("Invalid CREW Serial Number."), { status: 400, field: "crewSerialNumber" });
+      const arn = await withTransaction(async (tx) => {
+        if (data.crewSerialNumber) {
+          // Lock the AC row so two people can't open a job card for it at once.
+          const ac = await tx.query("SELECT 1 FROM ac_units WHERE crew_serial_number = ? FOR UPDATE", [data.crewSerialNumber]);
+          if (!ac.rowCount) {
+            throw Object.assign(new Error("Invalid CREW Serial Number."), { status: 400, field: "crewSerialNumber" });
+          }
+          const active = await tx.query(
+            "SELECT arn FROM job_cards WHERE crew_serial_number = ? AND status <> ? LIMIT 1",
+            [data.crewSerialNumber, STATUS.CLOSED],
+          );
+          if (active.rowCount) {
+            throw Object.assign(
+              new Error(`A Job Card (${active.rows[0].arn}) for this Air Conditioner is already active and not yet completed.`),
+              { status: 409, field: "crewSerialNumber" },
+            );
+          }
         }
-        const active = await client.query(
-          "SELECT arn FROM job_cards WHERE crew_serial_number = $1 AND status <> $2 LIMIT 1",
-          [data.crewSerialNumber, STATUS.CLOSED],
+
+        const year = new Date().getFullYear();
+        const n = await nextArnNumber(tx, year);
+        const newArn = `JC${year}${String(n).padStart(6, "0")}`;
+
+        const inserted = await tx.query(
+          `INSERT INTO job_cards
+            (arn, first_name, last_name, email, contact_number, department, section,
+             item_type, crew_serial_number, details_correct, description)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+          [newArn, data.firstName, data.lastName, data.email, data.contactNumber, data.department,
+           data.section, data.itemType, data.crewSerialNumber, data.detailsCorrect, data.description],
         );
-        if (active.rowCount) {
-          throw Object.assign(
-            new Error(`A Job Card (${active.rows[0].arn}) for this Air Conditioner is already active and not yet completed.`),
-            { status: 409, field: "crewSerialNumber" },
+
+        for (const f of req.files ?? []) {
+          await tx.query(
+            `INSERT INTO job_card_attachments (job_card_id, original_name, stored_name, mime_type, size_bytes)
+             VALUES (?,?,?,?,?)`,
+            [inserted.insertId, f.originalname, f.filename, f.mimetype, f.size],
           );
         }
-      }
-
-      const seq = await client.query("SELECT nextval('job_card_arn_seq') AS n");
-      const arn = `JC${new Date().getFullYear()}${String(seq.rows[0].n).padStart(6, "0")}`;
-
-      const inserted = await client.query(
-        `INSERT INTO job_cards
-          (arn, first_name, last_name, email, contact_number, department, section,
-           item_type, crew_serial_number, details_correct, description)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
-        [arn, data.firstName, data.lastName, data.email, data.contactNumber, data.department,
-         data.section, data.itemType, data.crewSerialNumber, data.detailsCorrect, data.description],
-      );
-
-      for (const f of req.files ?? []) {
-        await client.query(
-          `INSERT INTO job_card_attachments (job_card_id, original_name, stored_name, mime_type, size_bytes)
-           VALUES ($1,$2,$3,$4,$5)`,
-          [inserted.rows[0].id, f.originalname, f.filename, f.mimetype, f.size],
-        );
-      }
-
-      await client.query("COMMIT");
+        return newArn;
+      });
       res.status(201).json({ arn });
     } catch (err) {
-      await client.query("ROLLBACK");
       await removeFiles(req.files);
       if (err.status) {
         return res.status(err.status).json({ error: err.message, errors: { [err.field]: err.message } });
       }
       next(err);
-    } finally {
-      client.release();
     }
   });
 });
