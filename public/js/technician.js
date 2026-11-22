@@ -173,6 +173,7 @@ if (historyForm) {
       if (res.status === 401) { location.href = "/technician/login"; return; }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Something went wrong. Please try again.");
+      if (!data.ac) throw new Error("The server didn't send the history. Please reload the page and try again.");
       input.value = data.ac.crewSerialNumber;
       result.innerHTML = render(data);
     } catch (err) {

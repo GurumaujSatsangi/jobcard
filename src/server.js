@@ -57,7 +57,12 @@ app.use("/api", apiRouter);
 app.use("/technician", technicianRouter);
 app.use("/admin", adminRouter);
 
-app.use((_req, res) => res.redirect("/"));
+// Unknown addresses: API calls get a 404 JSON answer (a redirect would hand
+// scripts an HTML page they can't read); pages go back to the home page.
+app.use((req, res) => {
+  if (req.path.includes("/api/")) return res.status(404).json({ error: "Not found. If the portal was just updated, reload the page." });
+  res.redirect("/");
+});
 
 app.use((err, req, res, _next) => {
   console.error(err);
