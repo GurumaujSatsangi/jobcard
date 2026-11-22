@@ -48,6 +48,9 @@ app.locals.year = new Date().getFullYear();
 
 app.get("/", (_req, res) => res.render("index", { title: "Online Job Card Portal" }));
 
+// Placeholder until the store module is built.
+app.get("/store/login", (_req, res) => res.render("store/login", { title: "Store Login" }));
+
 app.use("/api", apiRouter);
 app.use("/technician", technicianRouter);
 app.use("/admin", adminRouter);

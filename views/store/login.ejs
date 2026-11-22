@@ -1,0 +1,20 @@
+<%- include("../partials/head") %>
+<%- include("../partials/header", { hideNotice: true }) %>
+
+<main class="flex-grow-1 page">
+  <div class="container">
+    <div class="panel signin">
+      <div class="panel-body">
+        <h1>Store sign in</h1>
+        <p class="sub">Store Management System</p>
+        <div class="flash flash-ok text-start mb-0" role="status">
+          <i class="bi bi-hourglass-split" aria-hidden="true"></i>
+          <span>The store module is being moved to the new portal and will be available here soon.</span>
+        </div>
+        <p class="help">For anything urgent, call the Help Desk at Extension <strong><%= HELPDESK.extension %></strong>.</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<%- include("../partials/footer") %>

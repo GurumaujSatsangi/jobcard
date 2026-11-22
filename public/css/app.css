@@ -101,6 +101,22 @@
   .header-link:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
   .header-user { color: rgb(255 255 255 / .8); font-size: 14px; padding-inline: .4rem; }
 
+  /* Phone: the three logins in one small menu */
+  .login-menu { position: relative; }
+  .login-menu > summary { list-style: none; }
+  .login-menu > summary::-webkit-details-marker { display: none; }
+  .login-menu-panel {
+    position: absolute; right: 0; top: calc(100% + .4rem); z-index: 1000;
+    min-width: 12rem; padding: .35rem; display: grid;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow);
+  }
+  .login-menu-panel a {
+    display: flex; align-items: center; gap: .6rem; padding: .6rem .75rem;
+    border-radius: var(--radius); color: var(--text); text-decoration: none; font-size: 15px;
+  }
+  .login-menu-panel a:hover, .login-menu-panel a:focus-visible { background: var(--surface-alt); }
+  .login-menu-panel .bi { color: var(--accent); }
+
   [data-bs-theme="dark"] .theme-icon-dark,
   [data-bs-theme="light"] .theme-icon-light { display: none; }
 

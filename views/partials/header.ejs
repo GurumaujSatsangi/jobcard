@@ -16,7 +16,27 @@
           <button type="submit" class="header-link"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Log out</button>
         </form>
       <% } else { %>
-        <a class="header-link" href="/technician/login"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> <span class="d-none sm:d-inline">Technician </span>Login</a>
+        <%
+          const logins = [
+            { href: "/technician/login", icon: "person-gear", label: "Technician Login" },
+            { href: "/store/login", icon: "box-seam", label: "Store Login" },
+            { href: "/admin/login", icon: "shield-lock", label: "Admin Login" },
+          ];
+        %>
+        <%# Wide screens: all three links. Phones: one "Login" menu. %>
+        <span class="d-none md:d-inline-flex align-items-center gap-1">
+          <% logins.forEach(l => { %>
+            <a class="header-link" href="<%= l.href %>"><i class="bi bi-<%= l.icon %>" aria-hidden="true"></i> <%= l.label %></a>
+          <% }) %>
+        </span>
+        <details class="login-menu md:d-none">
+          <summary class="header-link"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Login <i class="bi bi-chevron-down small" aria-hidden="true"></i></summary>
+          <div class="login-menu-panel">
+            <% logins.forEach(l => { %>
+              <a href="<%= l.href %>"><i class="bi bi-<%= l.icon %>" aria-hidden="true"></i> <%= l.label %></a>
+            <% }) %>
+          </div>
+        </details>
       <% } %>
       <button type="button" class="header-link" id="themeToggle" aria-label="Switch light or dark mode" title="Switch light / dark mode">
         <i class="bi bi-moon theme-icon-dark" aria-hidden="true"></i>
@@ -29,8 +49,15 @@
 <% if (!locals.hideNotice) { %>
 <div class="notice">
   <div class="container">
+    <marquee>
+      Welcome to the Online Job Card Portal designed & developed by IACS CREW!&nbsp; &nbsp;|&nbsp; &nbsp;
+   
     <i class="bi bi-info-circle" aria-hidden="true"></i>
-    For any query, write to <a href="mailto:<%= HELPDESK.email %>"><%= HELPDESK.email %></a> or call Extension <%= HELPDESK.extension %>.
+    For any query, write to <a href="mailto:<%= HELPDESK.email %>"><%= HELPDESK.email %></a> or call Extension <%= HELPDESK.extension %>.&nbsp; &nbsp;|&nbsp; &nbsp;If this is your first time here, please go through the <a href="" target="_blank">User Manual</a></marquee>
   </div>
 </div>
+
+
 <% } %>
+
+
