@@ -198,10 +198,16 @@ export function createSessionAuth(o) {
 }
 
 // Blocks cross-site form posts (CSRF) in addition to SameSite=Strict cookies.
+// Compares host names only: behind cPanel's Apache/Passenger the app sees
+// plain http while the browser's Origin is https, so the scheme can't be used.
 export function sameOriginOnly(req, res, next) {
   const origin = req.get("origin");
-  if (origin && origin !== `${req.protocol}://${req.get("host")}`) {
-    return res.status(403).send("Cross-site request blocked.");
+  if (origin) {
+    let originHost = null;
+    try { originHost = new URL(origin).host; } catch { /* "null" or malformed */ }
+    if (originHost !== req.get("host")) {
+      return res.status(403).send("Cross-site request blocked.");
+    }
   }
   next();
 }
