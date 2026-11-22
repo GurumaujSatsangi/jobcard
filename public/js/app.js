@@ -1,3 +1,6 @@
+// Same module URL as the page's Bootstrap script, so this is the same instance.
+import { Dialog } from "/vendor/bootstrap/js/bootstrap.bundle.min.js";
+
 (() => {
   "use strict";
 
@@ -101,14 +104,93 @@
     const btn = $("#statusFetchBtn");
     setLoading(btn, true, "Fetching…");
     statusResult.hidden = false;
+    const backBtn = cameFromEmail
+      ? '<button type="button" class="btn btn-subtle theme-secondary btn-sm mb-4" data-back-to-email><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to all applications</button>'
+      : "";
     try {
       const d = await api(`/api/job-cards/${encodeURIComponent(arn)}`);
-      statusResult.innerHTML = renderStatus(d);
+      statusResult.innerHTML = backBtn + renderStatus(d);
+    } catch (err) {
+      statusResult.innerHTML = `${backBtn}<div class="flash flash-err mb-0" role="alert"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span>${esc(err.message)}</span></div>`;
+    } finally {
+      setLoading(btn, false);
+      cameFromEmail = false;
+    }
+  });
+
+  /* Search by email: list the indentor's applications, each with "View status". */
+  const emailForm = $("#emailSearchForm");
+  let mode = "arn";
+  let cameFromEmail = false;
+  let emailResultsHtml = ""; // kept so "Back to all applications" can restore it
+
+  function setMode(next, { keepResult = false } = {}) {
+    mode = next;
+    $$("[data-status-mode]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.statusMode === mode)));
+    statusForm.hidden = mode !== "arn";
+    emailForm.hidden = mode !== "email";
+    if (!keepResult) {
+      statusResult.hidden = true;
+      statusResult.innerHTML = "";
+    }
+    (mode === "arn" ? arnInput : emailForm.email).focus();
+  }
+  $$("[data-status-mode]").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.statusMode)));
+
+  emailForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = emailForm.email.value.trim();
+    if (!email) return emailForm.email.focus();
+    const btn = $("#emailSearchBtn");
+    setLoading(btn, true, "Finding…");
+    statusResult.hidden = false;
+    try {
+      const { results } = await api(`/api/job-cards-by-email?email=${encodeURIComponent(email)}`);
+      emailResultsHtml = results.length
+        ? `<p class="small text-muted-2 mb-2">${results.length} application${results.length === 1 ? "" : "s"} for ${esc(email)}</p>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead><tr><th scope="col">ARN</th><th scope="col">Indentor</th><th scope="col">Section</th><th scope="col">Submitted</th><th></th></tr></thead>
+              <tbody>${results.map((r) => `<tr>
+                <td class="font-monospace fw-semibold">${esc(r.arn)}</td>
+                <td>${esc(r.indentor)}</td>
+                <td>${esc(r.section)}</td>
+                <td>${esc(r.submittedOn)}</td>
+                <td class="text-end"><button type="button" class="btn btn-outline theme-primary btn-sm" data-view-arn="${esc(r.arn)}">View status</button></td>
+              </tr>`).join("")}</tbody>
+            </table>
+          </div>`
+        : `<p class="text-muted-2 mb-0">No applications found for ${esc(email)}. Check the spelling, or search by ARN.</p>`;
+      statusResult.innerHTML = emailResultsHtml;
     } catch (err) {
       statusResult.innerHTML = `<div class="flash flash-err mb-0" role="alert"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span>${esc(err.message)}</span></div>`;
     } finally {
       setLoading(btn, false);
     }
+  });
+
+  statusResult.addEventListener("click", (e) => {
+    const view = e.target.closest("[data-view-arn]");
+    if (view) {
+      // Show this ARN's tracker, with a way back to the list.
+      setMode("arn", { keepResult: true });
+      arnInput.value = view.dataset.viewArn;
+      cameFromEmail = true;
+      statusForm.requestSubmit();
+      return;
+    }
+    if (e.target.closest("[data-back-to-email]")) {
+      setMode("email", { keepResult: true });
+      statusResult.innerHTML = emailResultsHtml;
+    }
+  });
+
+  // Each time the dialog opens, start on "By ARN" with nothing filled in.
+  $("#statusDialog")?.addEventListener("show.bs.dialog", () => {
+    statusForm.reset();
+    emailForm.reset();
+    emailResultsHtml = "";
+    setMode("arn");
   });
 
   /* ---------- New job card ---------- */
@@ -216,6 +298,77 @@
     } finally {
       setLoading(btn, false);
     }
+  });
+
+  /* "Forgot the CREW Serial Number?": search ACs by the in-charge's name.
+     The search dialog opens on top of the job card dialog (shown directly, not
+     via data-bs-toggle, so the form underneath stays open with its answers). */
+  const searchDialogEl = $("#crewSearchDialog");
+  const searchDialog = Dialog.getOrCreateInstance(searchDialogEl);
+  const searchForm = $("#crewSearchForm");
+  const searchResult = $("#crewSearchResult");
+
+  $("#crewForgotBtn").addEventListener("click", () => {
+    searchDialog.show();
+    setTimeout(() => searchForm.name.focus(), 50);
+  });
+
+  searchForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = searchForm.name.value.trim();
+    if (name.replace(/[^\p{L}\p{N}]/gu, "").length < 3) {
+      searchResult.innerHTML = '<p class="text-muted-2 mb-0">Type at least 3 letters of the name.</p>';
+      return searchForm.name.focus();
+    }
+    const btn = $("#crewSearchBtn");
+    setLoading(btn, true, "Searching…");
+    try {
+      const { results, more } = await api(`/api/ac-search?name=${encodeURIComponent(name)}`);
+      if (!results.length) {
+        searchResult.innerHTML = `<p class="text-muted-2 mb-0">No AC found for “${esc(name)}”. Try part of the name, e.g. just the surname, or call the Help Desk.</p>`;
+        return;
+      }
+      searchResult.innerHTML = `
+        <p class="small text-muted-2 mb-2">${results.length}${more ? "+" : ""} AC${results.length === 1 ? "" : "s"} found. Choose yours to fill in the CREW Serial Number.</p>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead><tr>
+              <th scope="col">CREW Serial No.</th><th scope="col">School / Department / Section / Unit</th>
+              <th scope="col">Room No.</th><th scope="col">Brand</th><th scope="col">In-charge</th><th></th>
+            </tr></thead>
+            <tbody>${results.map((r, i) => `<tr>
+              <td class="font-monospace">${esc(r.crewSerialNumber)}</td>
+              <td>${esc(r.school) || "—"}</td>
+              <td>${esc(r.roomNumber) || "—"}</td>
+              <td>${esc(r.brand) || "—"}</td>
+              <td>${esc(r.inCharge) || "—"}</td>
+              <td class="text-end"><button type="button" class="btn btn-outline theme-primary btn-sm" data-pick="${i}">Use this</button></td>
+            </tr>`).join("")}</tbody>
+          </table>
+        </div>
+        ${more ? '<p class="small text-muted-2 mt-2 mb-0">Showing the first 50. Type more of the name to narrow it down.</p>' : ""}`;
+      $$("[data-pick]", searchResult).forEach((b) =>
+        b.addEventListener("click", () => useCrew(results[Number(b.dataset.pick)].crewSerialNumber)),
+      );
+    } catch (err) {
+      searchResult.innerHTML = `<div class="flash flash-err mb-0" role="alert"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span>${esc(err.message)}</span></div>`;
+    } finally {
+      setLoading(btn, false);
+    }
+  });
+
+  // Put the chosen number in the job card form and load its details.
+  function useCrew(crew) {
+    searchDialog.hide();
+    crewInput.value = crew;
+    crewInput.dispatchEvent(new Event("input"));
+    $("#crewFetchBtn").click();
+  }
+
+  // Start clean each time the search opens.
+  searchDialogEl.addEventListener("hidden.bs.dialog", () => {
+    searchForm.reset();
+    searchResult.innerHTML = "";
   });
 
   /* Attachments */

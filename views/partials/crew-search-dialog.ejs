@@ -1,0 +1,18 @@
+<%# Opened on top of the New Job Card dialog from "Forgot the CREW Serial Number?". %>
+<dialog class="dialog dialog-lg dialog-scrollable" id="crewSearchDialog" aria-labelledby="crewSearchTitle">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="crewSearchTitle">Find your CREW Serial Number</h2>
+    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+  </div>
+  <div class="dialog-body">
+    <form id="crewSearchForm" novalidate>
+      <label class="form-label" for="crewSearchName">Full name of the Faculty / Staff / In-charge</label>
+      <div class="input-group">
+        <input type="search" class="form-control" id="crewSearchName" name="name" placeholder="e.g. Durga Basak" autocomplete="off" minlength="3" required>
+        <button type="submit" class="btn btn-solid theme-primary" id="crewSearchBtn">Search</button>
+      </div>
+      <div class="form-text">Type the name as it is on the AC record; part of the name also works.</div>
+    </form>
+    <div id="crewSearchResult" class="mt-5" aria-live="polite"></div>
+  </div>
+</dialog>

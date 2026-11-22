@@ -4,6 +4,11 @@
     <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
   </div>
   <div class="dialog-body">
+    <div class="seg mb-5" role="tablist" aria-label="Search by">
+      <button type="button" role="tab" aria-selected="true" data-status-mode="arn">By ARN</button>
+      <button type="button" role="tab" aria-selected="false" data-status-mode="email">By email</button>
+    </div>
+
     <form id="statusForm" novalidate>
       <label class="form-label" for="arnInput">Application Reference Number (ARN) <span class="req">*</span></label>
       <div class="input-group">
@@ -11,6 +16,15 @@
         <button type="submit" class="btn btn-solid theme-primary" id="statusFetchBtn">Fetch</button>
       </div>
       <div class="invalid-feedback" id="arnFeedback">Please enter your ARN.</div>
+    </form>
+
+    <form id="emailSearchForm" novalidate hidden>
+      <label class="form-label" for="statusEmail">Indentor's official email <span class="req">*</span></label>
+      <div class="input-group">
+        <input type="email" class="form-control" id="statusEmail" name="email" placeholder="yourname@<%= OFFICIAL_EMAIL_DOMAIN %>" required autocomplete="email">
+        <button type="submit" class="btn btn-solid theme-primary" id="emailSearchBtn">Find</button>
+      </div>
+      <div class="form-text">Shows every application made with this email.</div>
     </form>
 
     <div id="statusResult" class="mt-6" hidden></div>

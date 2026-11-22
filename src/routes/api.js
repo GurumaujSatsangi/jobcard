@@ -1,5 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
+import rateLimit from "express-rate-limit";
 import path from "node:path";
 import fs from "node:fs/promises";
 import crypto from "node:crypto";
@@ -48,6 +49,83 @@ function acView(row) {
     amcEndDate: fmtDate(row.amc_end_date),
   };
 }
+
+// "Forgot the CREW Serial Number?": find ACs by the faculty / staff / in-charge
+// name. Every word typed must appear in the name, so "durga basak" matches
+// "Prof. Durga Basak". Public, so rate-limited and capped at 50 results.
+const nameSearchLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 30,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { error: "Too many searches. Please wait a minute and try again." },
+});
+
+router.get("/ac-search", nameSearchLimiter, async (req, res, next) => {
+  try {
+    const name = (typeof req.query.name === "string" ? req.query.name : "").replace(/\s+/g, " ").trim().slice(0, 80);
+    const words = name.split(" ").filter((w) => w.replace(/[^\p{L}\p{N}]/gu, "").length > 0).slice(0, 5);
+    if (words.join("").length < 3) {
+      return res.status(400).json({ error: "Type at least 3 letters of the name." });
+    }
+    const like = (w) => `%${w.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+    const { rows } = await query(
+      `SELECT crew_serial_number, in_charge, school, room_number, brand
+         FROM ac_units
+        WHERE ${words.map(() => "in_charge LIKE ?").join(" AND ")}
+        ORDER BY in_charge, room_number, sr_no
+        LIMIT 51`,
+      words.map(like),
+    );
+    res.json({
+      results: rows.slice(0, 50).map((r) => ({
+        crewSerialNumber: r.crew_serial_number,
+        inCharge: r.in_charge,
+        school: r.school,
+        roomNumber: r.room_number,
+        brand: r.brand,
+      })),
+      more: rows.length > 50,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Check status by email: list an indentor's applications (ARN, name, date).
+// Public, so rate-limited and limited to official addresses.
+const emailSearchLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 20,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { error: "Too many searches. Please wait a minute and try again." },
+});
+
+router.get("/job-cards-by-email", emailSearchLimiter, async (req, res, next) => {
+  try {
+    const email = (typeof req.query.email === "string" ? req.query.email : "").trim().toLowerCase().slice(0, 255);
+    if (!new RegExp(`^[^\\s@]+@${OFFICIAL_EMAIL_DOMAIN.replace(".", "\\.")}$`).test(email)) {
+      return res.status(400).json({ error: `Enter the official @${OFFICIAL_EMAIL_DOMAIN} email used on the application.` });
+    }
+    const { rows } = await query(
+      `SELECT arn, first_name, last_name, section, created_at
+         FROM job_cards WHERE email = ?
+        ORDER BY created_at DESC LIMIT 50`,
+      [email],
+    );
+    res.json({
+      results: rows.map((r) => ({
+        arn: r.arn,
+        indentor: `${r.first_name} ${r.last_name}`,
+        section: sectionLabel(r.section),
+        submittedOn: new Date(r.created_at).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium" }),
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // Look up an AC by its CREW serial number ("IACS/CREW/AC/00001", "00001" or "1").
 router.get("/ac/:crew", async (req, res, next) => {
