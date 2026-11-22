@@ -51,13 +51,14 @@ export async function withTransaction(fn) {
   }
 }
 
-// Next ARN number for a year (1, 2, 3, ...). Uses LAST_INSERT_ID(expr) so the
+// Next reference number for a prefix and year (1, 2, 3, ...): "JC" for job
+// cards, "PS" for preventive services. Uses LAST_INSERT_ID(expr) so the
 // increment is atomic without needing sequences, which MySQL does not have.
-export async function nextArnNumber(tx, year) {
+export async function nextArnNumber(tx, year, prefix = "JC") {
   await tx.query(
-    `INSERT INTO arn_counters (year, last_value) VALUES (?, LAST_INSERT_ID(1))
+    `INSERT INTO arn_counters (prefix, year, last_value) VALUES (?, ?, LAST_INSERT_ID(1))
      ON DUPLICATE KEY UPDATE last_value = LAST_INSERT_ID(last_value + 1)`,
-    [year],
+    [prefix, year],
   );
   const { rows } = await tx.query("SELECT LAST_INSERT_ID() AS n");
   return Number(rows[0].n);
@@ -187,14 +188,115 @@ const SCHEMA = [
        REFERENCES job_cards (id) ON DELETE CASCADE
    ) ${TABLE_OPTS}`,
 
-  // Per-year ARN counter: JC<year><6-digit number>.
+  // Per-year reference counters: JC<year><6 digits> for job cards,
+  // PS<year><6 digits> for preventive services.
   `CREATE TABLE IF NOT EXISTS arn_counters (
-     year       SMALLINT UNSIGNED NOT NULL PRIMARY KEY,
-     last_value INT UNSIGNED NOT NULL
+     prefix     VARCHAR(8)        NOT NULL DEFAULT 'JC',
+     year       SMALLINT UNSIGNED NOT NULL,
+     last_value INT UNSIGNED      NOT NULL,
+     PRIMARY KEY (prefix, year)
+   ) ${TABLE_OPTS}`,
+
+  // Admins sign in with official email + password. Their profile (name,
+  // email, extension, department) is used as the indentor on preventive services.
+  `CREATE TABLE IF NOT EXISTS admin_accounts (
+     id              INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+     name            VARCHAR(255) NOT NULL,
+     email           VARCHAR(255) NOT NULL,
+     contact_number  VARCHAR(32)  NOT NULL,
+     department      VARCHAR(255) NOT NULL,
+     password_hash   VARCHAR(100) NOT NULL,
+     active          TINYINT(1)   NOT NULL DEFAULT 1,
+     created_at      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+     UNIQUE KEY admin_accounts_email_uq (email)
+   ) ${TABLE_OPTS}`,
+
+  `CREATE TABLE IF NOT EXISTS admin_sessions (
+     id                 CHAR(36)     NOT NULL PRIMARY KEY,
+     admin_id           INT UNSIGNED NOT NULL,
+     refresh_hash       CHAR(64)     NOT NULL,
+     prev_refresh_hash  CHAR(64),
+     rotated_at         DATETIME(3),
+     created_at         DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+     last_used_at       DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+     expires_at         DATETIME(3)  NOT NULL,
+     revoked_at         DATETIME(3),
+     user_agent         VARCHAR(300),
+     ip                 VARCHAR(64),
+     KEY admin_sessions_admin_idx (admin_id),
+     CONSTRAINT admin_sessions_admin_fk FOREIGN KEY (admin_id)
+       REFERENCES admin_accounts (id) ON DELETE CASCADE
+   ) ${TABLE_OPTS}`,
+
+  // Preventive services for ACs under AMC, raised by an admin and assigned
+  // straight to an AC technician. Each type (1-4) can be raised once per AC per
+  // year; the table is downloaded and emptied every April (see admin panel).
+  // Requester details are copied from the admin profile at the time of request.
+  `CREATE TABLE IF NOT EXISTS preventive_services (
+     id                   INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+     ref                  VARCHAR(32)  NOT NULL,
+     crew_serial_number   VARCHAR(32)  NOT NULL,
+     service_type         TINYINT UNSIGNED NOT NULL,
+     status               VARCHAR(32)  NOT NULL DEFAULT 'ASSIGNED',
+     requested_by_admin_id INT UNSIGNED,
+     requester_name       VARCHAR(255) NOT NULL,
+     requester_email      VARCHAR(255) NOT NULL,
+     requester_contact    VARCHAR(32)  NOT NULL,
+     requester_department VARCHAR(255) NOT NULL,
+     technician_id        INT UNSIGNED NOT NULL,
+     technician_name      VARCHAR(255) NOT NULL,
+     technician_phone     VARCHAR(32)  NOT NULL,
+     assigned_at          DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+     closed_at            DATETIME(3),
+     receipt_original_name VARCHAR(255),
+     receipt_stored_name   VARCHAR(255),
+     receipt_mime_type     VARCHAR(100),
+     receipt_size_bytes    INT UNSIGNED,
+     created_at           DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+     UNIQUE KEY preventive_services_ref_uq (ref),
+     UNIQUE KEY preventive_services_ac_type_uq (crew_serial_number, service_type),
+     KEY preventive_services_tech_idx (technician_id, status),
+     CONSTRAINT preventive_services_ac_fk FOREIGN KEY (crew_serial_number) REFERENCES ac_units (crew_serial_number),
+     CONSTRAINT preventive_services_tech_fk FOREIGN KEY (technician_id) REFERENCES technician_accounts (id),
+     CONSTRAINT preventive_services_admin_fk FOREIGN KEY (requested_by_admin_id)
+       REFERENCES admin_accounts (id) ON DELETE SET NULL
+   ) ${TABLE_OPTS}`,
+
+  // One row per yearly reset of preventive_services (download + empty).
+  `CREATE TABLE IF NOT EXISTS preventive_service_resets (
+     id          INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+     reset_at    DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+     admin_id    INT UNSIGNED,
+     admin_name  VARCHAR(255) NOT NULL,
+     rows_removed INT UNSIGNED NOT NULL,
+     export_file VARCHAR(255) NOT NULL
    ) ${TABLE_OPTS}`,
 ];
 
+async function columnExists(table, column) {
+  const { rows } = await query(
+    `SELECT COUNT(*) AS n FROM information_schema.columns
+      WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?`,
+    [table, column],
+  );
+  return Number(rows[0].n) > 0;
+}
+
 export async function initDb() {
+  // arn_counters first had only (year, last_value); add the prefix so
+  // preventive services get their own PS numbers. Existing rows become "JC".
+  const { rows: hasCounters } = await query(
+    "SELECT COUNT(*) AS n FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'arn_counters'",
+  );
+  if (Number(hasCounters[0].n) && !(await columnExists("arn_counters", "prefix"))) {
+    await query(
+      `ALTER TABLE arn_counters
+         ADD COLUMN prefix VARCHAR(8) NOT NULL DEFAULT 'JC' FIRST,
+         DROP PRIMARY KEY,
+         ADD PRIMARY KEY (prefix, year)`,
+    );
+  }
+
   for (const statement of SCHEMA) await query(statement);
 
   // The first version of ac_units had only a few columns. `npm run import:ac`
@@ -206,9 +308,5 @@ export async function initDb() {
 
 // True when ac_units still has the original few-column layout.
 export async function acUnitsNeedsUpgrade() {
-  const { rows } = await query(
-    `SELECT COUNT(*) AS n FROM information_schema.columns
-      WHERE table_schema = DATABASE() AND table_name = 'ac_units' AND column_name = 'sr_no'`,
-  );
-  return !Number(rows[0].n);
+  return !(await columnExists("ac_units", "sr_no"));
 }

@@ -13,6 +13,8 @@ Open http://localhost:3000. Tables are created on first start (`src/db.js`), and
 
 `.env` needs: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `PASSCODE_PEPPER` (see `.env.example`).
 
+> **PowerShell:** PowerShell drops the `--` in `npm run <script> -- <args>`, so npm swallows options like `--email`. In PowerShell run the scripts with node directly, e.g. `node scripts/admin.js list` instead of `npm run admin -- list`.
+
 ## Database
 
 MySQL 8 or MariaDB 10.6+. Create an empty database with collation `utf8mb4_unicode_ci` and a user with all privileges on it. The app creates its tables on first start. Times are stored in UTC and shown in India time.
@@ -39,6 +41,26 @@ npm run import:ac -- "path/to/FINAL DATA-SHEET -IACS-AC ... - AC.csv"
 - `QTY` and `Total` are not stored (always 1 / 1.00 in the sheet).
 
 People can type the CREW number in full (`IACS/CREW/AC/00007`) or just the number (`7`, `00007`).
+
+## Admin panel
+
+Admins sign in at `/admin/login` with their official email and a password. The dashboard has three cards:
+
+- **Manage job card applications**: every job card, filter by section and status, search by ARN or CREW number, view details and files, and assign or reassign a technician from that job's section.
+- **Manage AC database**: search, add, edit and delete rows of `ac_units`. An AC with job cards or preventive services can't be deleted.
+- **Preventive service**: ACs with AMC = Yes; apply for Preventive Service 1–4 (each once per AC), assigned straight to an AC technician. The requester is the signed-in admin's profile. Technicians see these on My Jobs with a "Preventive Service" badge and close them with a receipt photo. The **Applications** tab lists all of them.
+  - **Download & reset** is enabled during April (India time), once per financial year. It downloads the register as CSV, keeps a copy in `exports/`, and empties `preventive_services`. Set `PS_RESET_ALWAYS_ENABLED=true` only to test it outside April.
+
+Manage admins from the command line (the profile is used on preventive services):
+
+```bash
+npm run admin -- create --name "Jane Doe" --email jane.doe@iacs.res.in --phone 1703 --department "Workshop"
+npm run admin -- set-password --email jane.doe@iacs.res.in     # choose your own, typed hidden
+npm run admin -- reset-password --email jane.doe@iacs.res.in   # random, printed once
+npm run admin -- update --email jane.doe@iacs.res.in --phone 1704
+npm run admin -- deactivate --email jane.doe@iacs.res.in
+npm run admin -- list
+```
 
 ## Technicians
 

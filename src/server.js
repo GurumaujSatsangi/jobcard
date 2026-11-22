@@ -7,6 +7,7 @@ import crypto from "node:crypto";
 import { initDb } from "./db.js";
 import apiRouter, { UPLOAD_DIR } from "./routes/api.js";
 import technicianRouter from "./routes/technician.js";
+import adminRouter from "./routes/admin.js";
 import { SECTIONS, AC_ITEM_TYPES, HELPDESK, OFFICIAL_EMAIL_DOMAIN } from "./constants.js";
 
 const app = express();
@@ -49,6 +50,7 @@ app.get("/", (_req, res) => res.render("index", { title: "Online Job Card Portal
 
 app.use("/api", apiRouter);
 app.use("/technician", technicianRouter);
+app.use("/admin", adminRouter);
 
 app.use((_req, res) => res.redirect("/"));
 

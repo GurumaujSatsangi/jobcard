@@ -5,7 +5,7 @@ import path from "node:path";
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { query, withTransaction } from "../db.js";
-import { STATUS, sectionLabel } from "../constants.js";
+import { STATUS, PS_STATUS, sectionLabel } from "../constants.js";
 import {
   PASSCODE_LENGTH,
   verifyPasscode,
@@ -19,7 +19,8 @@ import {
 export const RECEIPT_DIR = path.resolve("uploads", "receipts");
 fs.mkdirSync(RECEIPT_DIR, { recursive: true });
 
-const RECEIPT_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"]);
+// Receipts are photos taken with the phone camera.
+const RECEIPT_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
 
 const receiptUpload = multer({
   storage: multer.diskStorage({
@@ -102,15 +103,42 @@ async function openJobsFor(tech) {
       ORDER BY assigned_at ASC`,
     [tech.id, tech.section, STATUS.CLOSED],
   );
-  return rows.map((r) => ({
+  const jobs = rows.map((r) => ({
+    kind: "job",
     arn: r.arn,
+    action: `/technician/job-cards/${encodeURIComponent(r.arn)}/receipt`,
     indentor: `${r.first_name} ${r.last_name}`,
     contact: r.contact_number,
     department: r.department,
     crew: r.crew_serial_number,
     description: r.description,
     assignedAt: fmt(r.assigned_at),
+    sortAt: r.assigned_at,
   }));
+
+  // Preventive services (AC section only), shown with a "Preventive Service" badge.
+  const { rows: ps } = await query(
+    `SELECT ps.ref, ps.service_type, ps.assigned_at, ps.requester_name, ps.requester_contact,
+            ps.crew_serial_number, a.room_number, a.school, a.in_charge
+       FROM preventive_services ps JOIN ac_units a ON a.crew_serial_number = ps.crew_serial_number
+      WHERE ps.technician_id = ? AND ps.status = ?`,
+    [tech.id, PS_STATUS.ASSIGNED],
+  );
+  const services = ps.map((r) => ({
+    kind: "preventive",
+    arn: r.ref,
+    action: `/technician/preventive-services/${encodeURIComponent(r.ref)}/receipt`,
+    serviceType: `Preventive Service ${r.service_type}`,
+    indentor: r.requester_name,
+    contact: r.requester_contact,
+    department: [r.room_number, r.school].filter(Boolean).join(", "),
+    inCharge: r.in_charge,
+    crew: r.crew_serial_number,
+    assignedAt: fmt(r.assigned_at),
+    sortAt: r.assigned_at,
+  }));
+
+  return [...jobs, ...services].sort((a, b) => new Date(a.sortAt) - new Date(b.sortAt));
 }
 
 // One-time messages after a POST (Post/Redirect/Get). Carried in a short-lived,
@@ -136,9 +164,9 @@ function takeFlash(req, res) {
 }
 
 const ERRORS = {
-  nofile: "Please choose a photo or PDF of the signed receipt.",
+  nofile: "Please take a photo of the signed receipt.",
   notfound: "This job is not assigned to you, or it is already closed.",
-  upload: "The file could not be uploaded. Please use a photo (JPG/PNG) or PDF under 15 MB.",
+  upload: "The photo could not be uploaded. Please take it again.",
 };
 
 const fail = (res, code) => {
@@ -197,6 +225,38 @@ router.post("/job-cards/:arn/receipt", requireTechnician, (req, res, next) => {
         return fail(res, "notfound");
       }
       setFlash(res, { type: "done", arn });
+      res.redirect("/technician");
+    } catch (err) {
+      await discard();
+      next(err);
+    }
+  });
+});
+
+// Upload the signed receipt for a preventive service; this closes it.
+router.post("/preventive-services/:ref/receipt", requireTechnician, (req, res, next) => {
+  receiptUpload(req, res, async (uploadErr) => {
+    const ref = String(req.params.ref).toUpperCase();
+    const file = req.file;
+    const discard = () => file && fs.promises.unlink(file.path).catch(() => {});
+
+    if (uploadErr) { await discard(); return fail(res, "upload"); }
+    if (!file) return fail(res, "nofile");
+
+    try {
+      const { rowCount } = await query(
+        `UPDATE preventive_services
+            SET status = ?, closed_at = UTC_TIMESTAMP(3),
+                receipt_original_name = ?, receipt_stored_name = ?, receipt_mime_type = ?, receipt_size_bytes = ?
+          WHERE ref = ? AND technician_id = ? AND status = ?`,
+        [PS_STATUS.CLOSED, file.originalname, `receipts/${file.filename}`, file.mimetype, file.size,
+         ref, req.technician.id, PS_STATUS.ASSIGNED],
+      );
+      if (!rowCount) {
+        await discard();
+        return fail(res, "notfound");
+      }
+      setFlash(res, { type: "done", arn: ref });
       res.redirect("/technician");
     } catch (err) {
       await discard();

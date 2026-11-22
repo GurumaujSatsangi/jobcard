@@ -270,26 +270,64 @@
   .list-head h2 { font-size: 18px; margin: 0; }
   .list-head .count { color: var(--text-muted); font-size: 14px; }
 
-  .job { margin-bottom: 1rem; }
-  .job .panel-body { padding: 1.5rem; }
-  .job-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .25rem 1rem; padding-bottom: 1rem; margin-bottom: 1rem; border-bottom: 1px solid var(--line); }
-  .job-arn { font-family: var(--bs-font-monospace, monospace); font-size: 22px; font-weight: 600; color: var(--text-strong); letter-spacing: .03em; }
-  .job-arn small { display: block; font-family: var(--bs-body-font-family); font-size: 12px; font-weight: 500; color: var(--text-muted); letter-spacing: .05em; text-transform: uppercase; }
-  .job-when { font-size: 13px; color: var(--text-muted); }
+  /* Job list: one Bootstrap 6 accordion item (<details>) per job, ARN as the title. */
+  .job-list .accordion-item.job {
+    background: var(--surface);
+    border: 1px solid light-dark(transparent, var(--line));
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow);
+  }
+  .job-list .accordion-header { padding: 1rem 1.5rem; cursor: pointer; background: transparent; }
+  .job-list .accordion-header:focus-visible { outline: 2px solid var(--accent-solid); outline-offset: -2px; border-radius: var(--radius-card); }
+  .job-list .accordion-icon { color: var(--text-muted); width: 1.25rem; height: 1.25rem; }
+  .job-list .accordion-body { padding: 0 1.5rem 1.5rem; border-top: 1px solid var(--line); padding-top: 1.25rem; }
+  .job-arn { font-family: var(--bs-font-monospace, monospace); font-size: 20px; font-weight: 600; color: var(--text-strong); letter-spacing: .03em; }
   .job-facts { display: grid; gap: .5rem; margin: 0 0 1.25rem; font-size: 15px; }
   .job-facts > div { display: grid; grid-template-columns: 6.5rem 1fr; gap: .75rem; }
   .job-facts dt { font-weight: 400; color: var(--text-muted); }
   .job-facts dd { margin: 0; }
   @media (max-width: 480px) { .job-facts > div { grid-template-columns: 1fr; gap: 0; } }
-  .job:target { outline: 2px solid var(--accent-solid); border-radius: var(--radius-card); }
 
   .receipt-pick { width: 100%; padding-block: .8rem; }
-  .receipt-thumb { display: block; max-height: 15rem; max-width: 100%; margin: 0 auto; border: 1px solid var(--line); border-radius: var(--radius); }
+  .receipt-photo { display: block; max-width: 100%; max-height: 60vh; margin: 0 auto; border: 1px solid var(--line); border-radius: var(--radius); object-fit: contain; background: var(--surface-alt); }
+  .receipt-actions { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+  .receipt-actions .btn { width: 100%; margin: 0; }
+  @media (max-width: 420px) { .receipt-actions { grid-template-columns: 1fr; } .receipt-actions #receiptSubmitBtn { order: -1; } }
   .receipt-file { padding: .6rem .8rem; border: 1px solid var(--line); border-radius: var(--radius); word-break: break-all; font-size: 14px; }
 
   .empty { text-align: center; padding: 2.5rem 1rem; color: var(--text-muted); }
   .empty .bi { font-size: 2rem; display: block; margin-bottom: .5rem; }
   .empty strong { display: block; color: var(--text-strong); font-weight: 500; font-size: 16px; margin-bottom: .2rem; }
+
+  /* ---------- Admin ---------- */
+  .admin-dialog { --bs-dialog-width: min(1200px, calc(100vw - 2rem)); }
+  .admin-dialog .dialog-body { min-height: 60vh; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+  .toolbar .form-control { flex: 1 1 14rem; width: auto; }
+  .toolbar select.form-control { flex: 0 1 13rem; }
+  .list-msg { padding: 2.5rem 1rem; text-align: center; color: var(--text-muted); }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .data-table th { text-align: left; font-weight: 500; color: var(--text-muted); font-size: 13px; padding: .55rem .6rem; border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--surface-alt); }
+  .data-table td { padding: .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .data-table tbody tr:hover { background: var(--surface-alt); }
+  .pager { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem; padding-top: 1rem; }
+  .form-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; padding-top: 1.25rem; border-top: 1px solid var(--line); }
+  .assign-box { padding: 1.25rem; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface-alt); }
+  .choice.is-disabled { opacity: .55; cursor: not-allowed; }
+
+  .ps-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .75rem; margin-bottom: 1rem; }
+  .ps-reset { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
+  .seg { display: inline-flex; border: 1px solid var(--input-line); border-radius: var(--radius); overflow: hidden; }
+  .seg button { border: 0; background: var(--surface); color: var(--text); padding: .45rem .9rem; font-size: 14px; font-weight: 500; cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--input-line); }
+  .seg button[aria-selected="true"] { background: var(--accent-solid); color: #fff; }
+  .chips { display: inline-flex; gap: .25rem; }
+  .chip-ps { display: inline-block; min-width: 2.2rem; text-align: center; padding: .1rem .35rem; border-radius: 999px; font-size: 11px; font-weight: 600; border: 1px solid var(--line); color: var(--text-muted); }
+  .chip-ps.is-done { background: light-dark(#e6f4ea, #15301f); border-color: light-dark(#b7dfc3, #24543a); color: light-dark(#146c2e, #8fe0ac); }
+
+  /* Technician: preventive service badge in the job list */
+  .badge-ps { display: inline-block; margin-left: .6rem; padding: .15rem .55rem; border-radius: 999px; font-size: 12px; font-weight: 600; vertical-align: middle;
+    background: light-dark(#fff4e0, #3a2a10); color: light-dark(#8a5300, #ffc46b); font-family: var(--bs-body-font-family); letter-spacing: 0; }
 
   /* ---------- Footer ---------- */
   .site-footer {

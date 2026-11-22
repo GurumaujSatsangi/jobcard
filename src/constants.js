@@ -20,6 +20,10 @@ export const STATUS = {
   CLOSED: "APPLICATION CLOSED",
 };
 
+// Preventive services: four per AC per year, raised by an admin.
+export const PREVENTIVE_TYPES = [1, 2, 3, 4].map((n) => ({ value: n, label: `Preventive Service ${n}` }));
+export const PS_STATUS = { ASSIGNED: "ASSIGNED", CLOSED: "CLOSED" };
+
 export const OFFICIAL_EMAIL_DOMAIN = "iacs.res.in";
 
 export const HELPDESK = {

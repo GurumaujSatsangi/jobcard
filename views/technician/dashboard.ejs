@@ -33,46 +33,71 @@
       </div>
     <% } %>
 
+    <% if (jobs.length) { %>
+    <div class="accordion accordion-gap job-list">
+    <% } %>
     <% jobs.forEach((job, i) => { %>
-    <article class="panel job" id="job-<%= job.arn %>">
-      <div class="panel-body">
-        <div class="job-top">
-          <div class="job-arn"><small>ARN</small><%= job.arn %></div>
-          <span class="job-when">Assigned <%= job.assignedAt %></span>
-        </div>
-
+    <details class="accordion-item job" id="job-<%= job.arn %>">
+      <summary class="accordion-header">
+        <span class="job-arn"><%= job.arn %><% if (job.kind === "preventive") { %><span class="badge-ps">Preventive Service</span><% } %></span>
+        <svg class="accordion-icon" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </summary>
+      <div class="accordion-body">
         <dl class="job-facts">
+          <% if (job.kind === "preventive") { %><div><dt>Service</dt><dd><%= job.serviceType %></dd></div><% } %>
+          <div><dt>Assigned</dt><dd><%= job.assignedAt %></dd></div>
           <div><dt>Place</dt><dd><%= job.department %></dd></div>
-          <div><dt>Contact</dt><dd><%= job.indentor %>, Ext. <%= job.contact %></dd></div>
+          <% if (job.inCharge) { %><div><dt>In-charge</dt><dd><%= job.inCharge %></dd></div><% } %>
+          <div><dt><%= job.kind === "preventive" ? "Requested by" : "Contact" %></dt><dd><%= job.indentor %>, Ext. <%= job.contact %></dd></div>
           <% if (job.crew) { %><div><dt>AC number</dt><dd><%= job.crew %></dd></div><% } %>
-          <div><dt>Problem</dt><dd><%= job.description %></dd></div>
+          <% if (job.description) { %><div><dt>Problem</dt><dd><%= job.description %></dd></div><% } %>
         </dl>
 
-        <form method="post" action="/technician/job-cards/<%= encodeURIComponent(job.arn) %>/receipt"
+        <form method="post" action="<%= job.action %>"
               enctype="multipart/form-data" class="receipt-form">
+          <%# capture="environment" opens the phone's back camera directly instead of the gallery. %>
           <input type="file" name="receipt" id="receipt-<%= i %>" class="visually-hidden receipt-input"
-                 accept="image/*,application/pdf" required>
+                 accept="image/*" capture="environment" required data-arn="<%= job.arn %>">
 
           <label for="receipt-<%= i %>" class="btn btn-solid theme-primary btn-lg receipt-pick">
-            <i class="bi bi-camera" aria-hidden="true"></i> Upload signed receipt
+            <i class="bi bi-camera" aria-hidden="true"></i> Take photo of signed receipt
           </label>
-
-          <div class="receipt-preview" hidden>
-            <img alt="Preview of the selected receipt" class="receipt-thumb" hidden>
-            <div class="receipt-file"><i class="bi bi-file-earmark" aria-hidden="true"></i> <span></span></div>
-            <div class="d-grid gap-3 mt-4">
-              <button type="submit" class="btn btn-solid theme-primary btn-lg receipt-submit">Submit and close job</button>
-              <label for="receipt-<%= i %>" class="btn btn-outline theme-secondary">Choose a different photo</label>
-            </div>
-          </div>
           <noscript>
             <button type="submit" class="btn btn-solid theme-primary btn-lg w-100 mt-3">Submit and close job</button>
           </noscript>
         </form>
       </div>
-    </article>
+    </details>
     <% }) %>
+    <% if (jobs.length) { %>
+    </div>
+    <% } %>
   </div>
 </main>
+
+<% if (jobs.length) { %>
+<dialog class="dialog dialog-scrollable" id="receiptDialog" aria-labelledby="receiptDialogTitle" data-bs-backdrop="static">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="receiptDialogTitle">Check the photo</h2>
+    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+  </div>
+  <div class="dialog-body">
+    <p class="mb-3">Job <strong class="font-monospace" id="receiptDialogArn"></strong></p>
+    <img id="receiptDialogImg" class="receipt-photo" alt="Photo of the signed receipt">
+    <div id="receiptDialogNoPreview" class="receipt-file" hidden>
+      <i class="bi bi-image" aria-hidden="true"></i> Photo taken. This phone can't show a preview, but it will upload fine.
+    </div>
+    <p class="text-muted-2 small mt-3 mb-0">Make sure the whole receipt and the signature are clear. If not, take the photo again.</p>
+  </div>
+  <div class="dialog-footer receipt-actions">
+    <button type="button" class="btn btn-outline theme-secondary" id="receiptRetakeBtn">
+      <i class="bi bi-camera" aria-hidden="true"></i> Retake photo
+    </button>
+    <button type="button" class="btn btn-solid theme-primary" id="receiptSubmitBtn">Submit and close job</button>
+  </div>
+</dialog>
+<% } %>
 
 <%- include("../partials/footer", { scripts: ["/js/technician.js"] }) %>

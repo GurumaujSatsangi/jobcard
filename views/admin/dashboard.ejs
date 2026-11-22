@@ -1,0 +1,203 @@
+<%- include("../partials/head") %>
+<%- include("../partials/header") %>
+
+<main class="flex-grow-1 page">
+  <div class="container">
+    <div class="page-head">
+      <h1>Admin</h1>
+      <p><%= admin.name %> &middot; <%= admin.department %> &middot; Ext. <%= admin.contact_number %></p>
+    </div>
+
+    <div class="row g-5">
+      <div class="col-12 md:col-4">
+        <section class="panel panel-body action-card">
+          <h2><i class="bi bi-card-checklist" aria-hidden="true"></i> Manage job card applications</h2>
+          <p>View all job cards, filter by section, search by ARN or CREW number, and assign technicians.</p>
+          <button type="button" class="btn btn-solid theme-primary" data-bs-toggle="dialog" data-bs-target="#jobsDialog">Open</button>
+        </section>
+      </div>
+      <div class="col-12 md:col-4">
+        <section class="panel panel-body action-card">
+          <h2><i class="bi bi-snow" aria-hidden="true"></i> Manage AC database</h2>
+          <p>Add, edit or remove ACs in the inventory used for CREW number lookups.</p>
+          <button type="button" class="btn btn-solid theme-primary" data-bs-toggle="dialog" data-bs-target="#acDialog">Open</button>
+        </section>
+      </div>
+      <div class="col-12 md:col-4">
+        <section class="panel panel-body action-card">
+          <h2><i class="bi bi-tools" aria-hidden="true"></i> Preventive service</h2>
+          <p>Raise preventive services for ACs under AMC and track them. Reset the register every April.</p>
+          <button type="button" class="btn btn-solid theme-primary" data-bs-toggle="dialog" data-bs-target="#psDialog">Open</button>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ============ Job cards ============ -->
+<dialog class="dialog dialog-xl dialog-scrollable admin-dialog" id="jobsDialog" aria-labelledby="jobsTitle">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="jobsTitle">Job card applications</h2>
+    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+  </div>
+  <div class="dialog-body">
+    <div data-view="list">
+      <form class="toolbar" data-filters role="search">
+        <input type="search" class="form-control" name="q" placeholder="Search ARN or CREW number" aria-label="Search ARN or CREW number">
+        <select class="form-control" name="section" aria-label="Section">
+          <option value="">All sections</option>
+          <% SECTIONS.forEach(s => { %><option value="<%= s.value %>"><%= s.label %></option><% }) %>
+        </select>
+        <select class="form-control" name="status" aria-label="Status">
+          <option value="open">Open</option>
+          <option value="unassigned">Not yet assigned</option>
+          <option value="closed">Closed</option>
+          <option value="all">All</option>
+        </select>
+      </form>
+      <div class="list-area" data-list></div>
+    </div>
+
+    <div data-view="detail" hidden>
+      <button type="button" class="btn btn-subtle theme-secondary btn-sm mb-4" data-back><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to list</button>
+      <div data-detail></div>
+    </div>
+  </div>
+</dialog>
+
+<!-- ============ AC database ============ -->
+<dialog class="dialog dialog-xl dialog-scrollable admin-dialog" id="acDialog" aria-labelledby="acTitle">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="acTitle">AC database</h2>
+    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+  </div>
+  <div class="dialog-body">
+    <div data-view="list">
+      <form class="toolbar" data-filters role="search">
+        <input type="search" class="form-control" name="q" placeholder="Search CREW number, room, in-charge, school or brand" aria-label="Search ACs">
+        <button type="button" class="btn btn-solid theme-primary" data-add><i class="bi bi-plus-lg" aria-hidden="true"></i> Add AC</button>
+      </form>
+      <div class="list-area" data-list></div>
+    </div>
+
+    <div data-view="detail" hidden>
+      <button type="button" class="btn btn-subtle theme-secondary btn-sm mb-4" data-back><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to list</button>
+      <form id="acForm" novalidate>
+        <h3 class="h5 mb-1" data-form-title></h3>
+        <p class="text-muted-2 small mb-5" data-form-sub></p>
+        <div class="flash flash-err" data-form-error role="alert" hidden></div>
+        <div data-fields></div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline theme-danger" data-delete hidden><i class="bi bi-trash" aria-hidden="true"></i> Delete AC</button>
+          <span class="flex-grow-1"></span>
+          <button type="button" class="btn btn-subtle theme-secondary" data-back>Cancel</button>
+          <button type="submit" class="btn btn-solid theme-primary" data-save>Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</dialog>
+
+<!-- ============ Preventive service ============ -->
+<dialog class="dialog dialog-xl dialog-scrollable admin-dialog" id="psDialog" aria-labelledby="psTitle">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="psTitle">Preventive service</h2>
+    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+  </div>
+  <div class="dialog-body">
+    <div data-view="list">
+      <div class="ps-top">
+        <div class="seg" role="tablist" aria-label="Preventive service views">
+          <button type="button" role="tab" aria-selected="true" data-tab="acs">ACs under AMC</button>
+          <button type="button" role="tab" aria-selected="false" data-tab="services">Applications</button>
+        </div>
+        <div class="ps-reset">
+          <span class="small text-muted-2" data-reset-note></span>
+          <button type="button" class="btn btn-outline theme-danger btn-sm" data-reset disabled>
+            <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Download &amp; reset
+          </button>
+        </div>
+      </div>
+
+      <form class="toolbar" data-filters role="search">
+        <input type="search" class="form-control" name="q" placeholder="Search CREW number, room, in-charge or school" aria-label="Search">
+      </form>
+      <div class="list-area" data-list></div>
+    </div>
+
+    <div data-view="apply" hidden>
+      <button type="button" class="btn btn-subtle theme-secondary btn-sm mb-4" data-back><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to list</button>
+      <form id="psForm" novalidate>
+        <h3 class="h5 mb-4">Apply for preventive service</h3>
+        <div class="flash flash-err" data-form-error role="alert" hidden></div>
+
+        <div class="form-section">
+          <div class="form-section-title">Air conditioner</div>
+          <table class="kv-table"><tbody data-ac-summary></tbody></table>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Requested by (your profile)</div>
+          <table class="kv-table">
+            <tbody>
+              <tr><th scope="row">Name</th><td><%= admin.name %></td></tr>
+              <tr><th scope="row">Email</th><td><%= admin.email %></td></tr>
+              <tr><th scope="row">Extension</th><td><%= admin.contact_number %></td></tr>
+              <tr><th scope="row">School / Department / Section / Unit</th><td><%= admin.department %></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Service</div>
+          <div class="field">
+            <label class="form-label" for="psTechnician">Technician <span class="req">*</span></label>
+            <select class="form-control" id="psTechnician" name="technicianId" required></select>
+            <div class="invalid-feedback" data-for="technicianId"></div>
+          </div>
+          <div class="field" role="radiogroup" aria-labelledby="psTypeLabel">
+            <span class="field-label" id="psTypeLabel">Preventive service type <span class="req">*</span></span>
+            <div class="choice-list two-col" data-types></div>
+            <div class="invalid-feedback" data-for="serviceType"></div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <span class="flex-grow-1"></span>
+          <button type="button" class="btn btn-subtle theme-secondary" data-back>Cancel</button>
+          <button type="submit" class="btn btn-solid theme-primary" data-save>Apply for preventive service</button>
+        </div>
+      </form>
+    </div>
+
+    <div data-view="reset" hidden>
+      <button type="button" class="btn btn-subtle theme-secondary btn-sm mb-4" data-back><i class="bi bi-arrow-left" aria-hidden="true"></i> Back</button>
+      <form id="psResetForm" novalidate>
+        <h3 class="h5 mb-3">Reset the preventive service register</h3>
+        <div class="flash flash-err" data-form-error role="alert" hidden></div>
+        <p data-reset-summary></p>
+        <ol class="mb-5">
+          <li>All preventive service applications are downloaded as a CSV file (a copy is also kept on the server).</li>
+          <li>The register is then emptied, so Preventive Service 1&ndash;4 can be raised again for every AC.</li>
+        </ol>
+        <div class="field">
+          <label class="form-label" for="psResetConfirm">Type <strong>RESET</strong> to confirm</label>
+          <input type="text" class="form-control" id="psResetConfirm" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="form-actions">
+          <span class="flex-grow-1"></span>
+          <button type="button" class="btn btn-subtle theme-secondary" data-back>Cancel</button>
+          <button type="submit" class="btn btn-solid theme-danger" data-save disabled>Download &amp; reset</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</dialog>
+
+<script type="application/json" id="adminData"><%- JSON.stringify({
+  sections: SECTIONS.map(s => ({ value: s.value, label: s.label })),
+  acFields,
+  preventiveTypes,
+}).replace(/</g, "\\u003c") %></script>
+
+<%- include("../partials/footer", { scripts: ["/js/admin.js"] }) %>

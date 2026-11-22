@@ -99,7 +99,7 @@ try {
 
   // Make sure new applications get ARNs after the demo ones.
   await query(
-    `INSERT INTO arn_counters (year, last_value) VALUES (2026, 3)
+    `INSERT INTO arn_counters (prefix, year, last_value) VALUES ('JC', 2026, 3)
      ON DUPLICATE KEY UPDATE last_value = GREATEST(last_value, 3)`,
   );
 
