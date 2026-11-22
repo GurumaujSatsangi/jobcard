@@ -1,0 +1,22 @@
+<%# Opened on top of the New Job Card dialog from "Scan QR on keytag". %>
+<dialog class="dialog dialog-scrollable" id="qrScanDialog" aria-labelledby="qrScanTitle">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="qrScanTitle">Scan the QR on the keytag</h2>
+    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+  </div>
+  <div class="dialog-body">
+    <div class="qr-viewport" id="qrViewport" hidden>
+      <video id="qrVideo" playsinline muted></video>
+      <span class="qr-frame" aria-hidden="true"></span>
+    </div>
+    <p class="text-center mt-3 mb-4" id="qrStatus" role="status">Starting the camera…</p>
+    <canvas id="qrCanvas" hidden></canvas>
+
+    <div class="text-center">
+      <label class="btn btn-outline theme-primary" for="qrPhotoInput">
+        <i class="bi bi-camera" aria-hidden="true"></i> <span id="qrPhotoLabel">Take a photo instead</span>
+      </label>
+      <input type="file" id="qrPhotoInput" accept="image/*" capture="environment" class="visually-hidden">
+    </div>
+  </div>
+</dialog>

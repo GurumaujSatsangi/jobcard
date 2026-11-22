@@ -47,6 +47,9 @@ export const getTechnician = auth.getAccount;
 export const clearAuthCookies = auth.clearCookies;
 
 export const requireTechnician = auth.requireAccount((req, res) => {
+  if (req.path.startsWith("/api/")) {
+    return res.status(401).json({ error: "Your session has ended. Please log in again." });
+  }
   if (req.method === "GET") return res.redirect("/technician/login");
   return res.status(401).render("technician/login", {
     title: "Technician Login",

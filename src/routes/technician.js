@@ -5,7 +5,7 @@ import path from "node:path";
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { query, withTransaction } from "../db.js";
-import { STATUS, PS_STATUS, sectionLabel } from "../constants.js";
+import { STATUS, PS_STATUS, sectionLabel, normalizeCrewSerial } from "../constants.js";
 import {
   PASSCODE_LENGTH,
   verifyPasscode,
@@ -140,6 +140,53 @@ async function openJobsFor(tech) {
 
   return [...jobs, ...services].sort((a, b) => new Date(a.sortAt) - new Date(b.sortAt));
 }
+
+// Service history of an AC: every job card raised for a CREW serial number,
+// newest first. Typed in ("IACS/CREW/AC/00042", "42") or scanned from the keytag.
+router.get("/api/service-history", requireTechnician, async (req, res, next) => {
+  try {
+    const crew = normalizeCrewSerial(typeof req.query.crew === "string" ? req.query.crew.slice(0, 40) : "");
+    if (!/^IACS\/CREW\/AC\/\d{5}$/.test(crew)) {
+      return res.status(400).json({ error: "Enter a CREW Serial Number, e.g. IACS/CREW/AC/00042 or just 42." });
+    }
+    const { rows: [ac] } = await query(
+      "SELECT crew_serial_number, brand, ac_type, capacity_tr, room_number, in_charge, school FROM ac_units WHERE crew_serial_number = ?",
+      [crew],
+    );
+    if (!ac) return res.status(404).json({ error: `No AC found for ${crew}.` });
+    const { rows } = await query(
+      `SELECT jc.arn, jc.description, jc.status, jc.materials_issued, jc.created_at, jc.assigned_at, jc.closed_at,
+              COALESCE(t.name, jc.technician_name) AS tech_name, COALESCE(t.phone, jc.technician_phone) AS tech_phone
+         FROM job_cards jc LEFT JOIN technician_accounts t ON t.id = jc.technician_id
+        WHERE jc.crew_serial_number = ?
+        ORDER BY jc.created_at DESC
+        LIMIT 200`,
+      [crew],
+    );
+    res.json({
+      ac: {
+        crewSerialNumber: ac.crew_serial_number,
+        brand: ac.brand,
+        type: [ac.ac_type, ac.capacity_tr && `${ac.capacity_tr} Ton`].filter(Boolean).join(", ") || null,
+        place: [ac.room_number, ac.school].filter(Boolean).join(", ") || null,
+        inCharge: ac.in_charge,
+      },
+      history: rows.map((r) => ({
+        arn: r.arn,
+        issue: r.description,
+        status: r.status,
+        closed: r.status === STATUS.CLOSED,
+        materials: r.materials_issued,
+        submittedOn: fmt(r.created_at),
+        assignedOn: fmt(r.assigned_at),
+        completedOn: fmt(r.closed_at),
+        technician: r.tech_name ? `${r.tech_name}${r.tech_phone ? ` (Ext. ${r.tech_phone})` : ""}` : null,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // One-time messages after a POST (Post/Redirect/Get). Carried in a short-lived,
 // signed, httpOnly cookie instead of the URL, and cleared as soon as it is shown.

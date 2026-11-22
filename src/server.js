@@ -39,6 +39,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.resolve("public")));
 app.use("/vendor/bootstrap", express.static(path.resolve("node_modules/bootstrap/dist")));
 app.use("/vendor/bootstrap-icons", express.static(path.resolve("node_modules/bootstrap-icons/font")));
+// QR code reader for "Scan QR" on the job card form.
+app.use("/vendor/jsqr", express.static(path.resolve("node_modules/jsqr/dist")));
 
 app.locals.SECTIONS = SECTIONS;
 app.locals.AC_ITEM_TYPES = AC_ITEM_TYPES;

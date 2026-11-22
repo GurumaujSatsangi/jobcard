@@ -75,9 +75,39 @@
     <div data-view="list">
       <form class="toolbar" data-filters role="search">
         <input type="search" class="form-control" name="q" placeholder="Search CREW number, room, in-charge, school or brand" aria-label="Search ACs">
+        <button type="button" class="btn btn-outline theme-primary" data-import><i class="bi bi-upload" aria-hidden="true"></i> Import CSV</button>
         <button type="button" class="btn btn-solid theme-primary" data-add><i class="bi bi-plus-lg" aria-hidden="true"></i> Add AC</button>
       </form>
       <div class="list-area" data-list></div>
+    </div>
+
+    <div data-view="import" hidden>
+      <button type="button" class="btn btn-subtle theme-secondary btn-sm mb-4" data-back><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to list</button>
+      <h3 class="h5 mb-3">Import ACs from a CSV file</h3>
+      <div class="flash flash-err" data-import-error role="alert" hidden></div>
+
+      <div class="form-section">
+        <div class="form-section-title">1. Fill in the template</div>
+        <p class="mb-3">Open the template in Excel or Google Sheets, add one AC per row, and save it as <strong>CSV</strong>.</p>
+        <ul class="small text-muted-2 mb-4">
+          <li>Leave <strong>CREW Serial No.</strong> blank for new ACs; they're numbered automatically after the highest existing number.</li>
+          <li>To update an existing AC, put its CREW Serial No. (e.g. <span class="font-monospace">IACS/CREW/AC/00042</span> or just <span class="font-monospace">42</span>). Only the cells you fill in are changed.</li>
+          <li>Dates can be <span class="font-monospace">2026-04-01</span> or <span class="font-monospace">01.04.2026</span>; Yes/No columns accept Yes, No, Y or N.</li>
+        </ul>
+        <a class="btn btn-outline theme-primary btn-sm" href="/admin/api/ac-units/template.csv" download><i class="bi bi-download" aria-hidden="true"></i> Download template</a>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">2. Upload and check</div>
+        <label class="dropzone" for="acCsvFile">
+          <i class="bi bi-filetype-csv" aria-hidden="true"></i>
+          <span><strong>Choose a CSV file</strong></span>
+          <span class="form-text m-0" data-file-name>Nothing is saved until you click Import.</span>
+          <input type="file" id="acCsvFile" accept=".csv,text/csv" class="visually-hidden">
+        </label>
+      </div>
+
+      <div data-import-preview></div>
     </div>
 
     <div data-view="detail" hidden>

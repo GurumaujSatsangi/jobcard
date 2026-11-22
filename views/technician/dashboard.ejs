@@ -20,6 +20,14 @@
       </div>
     <% } %>
 
+    <section class="panel history-entry mb-6">
+      <div>
+        <h2 class="h6 mb-1"><i class="bi bi-clock-history" aria-hidden="true"></i> Service history</h2>
+        <p class="small text-muted-2 mb-0">See every job card for an AC: type its CREW number or scan the keytag.</p>
+      </div>
+      <button type="button" class="btn btn-outline theme-primary" data-bs-toggle="dialog" data-bs-target="#historyDialog">Check history</button>
+    </section>
+
     <div class="list-head">
       <h2>Open jobs</h2>
       <span class="count"><%= jobs.length %> assigned to you</span>
@@ -99,5 +107,29 @@
   </div>
 </dialog>
 <% } %>
+
+<dialog class="dialog dialog-lg dialog-scrollable" id="historyDialog" aria-labelledby="historyTitle">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="historyTitle">Service history</h2>
+    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+  </div>
+  <div class="dialog-body">
+    <form id="historyForm" novalidate>
+      <label class="form-label" for="historyCrew">CREW Serial Number</label>
+      <div class="input-group">
+        <input type="text" class="form-control text-uppercase" id="historyCrew" name="crew" placeholder="e.g. IACS/CREW/AC/00042 or just 42" autocomplete="off" inputmode="text">
+        <button type="submit" class="btn btn-solid theme-primary" id="historyFetchBtn">Show history</button>
+      </div>
+      <button type="button" class="btn btn-outline theme-primary btn-lg w-100 mt-3" id="historyScanBtn">
+        <i class="bi bi-qr-code-scan" aria-hidden="true"></i> Scan keytag
+      </button>
+    </form>
+    <div id="historyResult" class="mt-6" aria-live="polite"></div>
+  </div>
+</dialog>
+
+<%- include("../partials/qr-scan-dialog") %>
+<%# QR code reader (global jsQR), loaded as a classic script. %>
+<script src="/vendor/jsqr/jsQR.js" defer></script>
 
 <%- include("../partials/footer", { scripts: ["/js/technician.js"] }) %>

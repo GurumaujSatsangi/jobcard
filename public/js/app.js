@@ -1,5 +1,6 @@
 // Same module URL as the page's Bootstrap script, so this is the same instance.
 import { Dialog } from "/vendor/bootstrap/js/bootstrap.bundle.min.js";
+import { openQrScanner } from "/js/qr-scan.js";
 
 (() => {
   "use strict";
@@ -369,6 +370,16 @@ import { Dialog } from "/vendor/bootstrap/js/bootstrap.bundle.min.js";
   searchDialogEl.addEventListener("hidden.bs.dialog", () => {
     searchForm.reset();
     searchResult.innerHTML = "";
+  });
+
+  /* "Scan QR on keytag": fill the CREW field from the keytag and fetch the AC
+     details straight away (shared scanner in qr-scan.js). */
+  $("#crewScanBtn").addEventListener("click", () => {
+    openQrScanner((crew) => {
+      crewInput.value = crew;
+      crewInput.dispatchEvent(new Event("input"));
+      $("#crewFetchBtn").click();
+    });
   });
 
   /* Attachments */

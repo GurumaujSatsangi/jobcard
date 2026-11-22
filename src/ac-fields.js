@@ -3,7 +3,8 @@
 //
 // type: text | date | money | yesno | choice
 export const AC_FIELDS = [
-  { key: "sr_no", label: "SR No.", type: "int", group: "Identification", required: true, help: "CREW serial number becomes IACS/CREW/AC/<SR No.>" },
+  // Not typed in: new ACs get the next number after the highest one in the database.
+  { key: "sr_no", label: "SR No.", type: "int", group: "Identification", auto: true, help: "Assigned automatically. The CREW serial number is IACS/CREW/AC/<SR No.>" },
   { key: "brand", label: "Brand", type: "text", group: "Unit", max: 64 },
   { key: "ac_type", label: "Type", type: "choice", group: "Unit", options: ["Split", "Window", "Cassette", "Ductable", "Package", "Air Handling Unit", "EMSON"] },
   { key: "capacity_tr", label: "Capacity (Ton)", type: "text", group: "Unit", max: 16 },

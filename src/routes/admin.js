@@ -1,6 +1,6 @@
 // Admin panel: sign-in, dashboard page and the JSON API behind its three cards
 // (job cards, AC database, preventive services), plus protected file viewing.
-import { Router } from "express";
+import express, { Router } from "express";
 import rateLimit from "express-rate-limit";
 import path from "node:path";
 import fs from "node:fs";
@@ -9,6 +9,9 @@ import {
   SECTIONS, STATUS, PS_STATUS, PREVENTIVE_TYPES, sectionLabel, itemTypeLabel, normalizeCrewSerial,
 } from "../constants.js";
 import { AC_FIELDS, validateAc } from "../ac-fields.js";
+import { analyseCsv, templateCsv } from "../ac-import.js";
+import { keytagPdf } from "../keytag.js";
+import { jobCardPdf } from "../jobcard-pdf.js";
 import { verifyAdmin, startSession, endSession, getAdmin, requireAdmin } from "../auth/admin-auth.js";
 import { sameOriginOnly } from "../auth/session-auth.js";
 import { UPLOAD_DIR } from "./api.js";
@@ -117,7 +120,7 @@ router.get("/api/job-cards", asyncRoute(async (req, res) => {
   const { rows: [{ n }] } = await query(`SELECT COUNT(*) AS n FROM job_cards jc ${whereSql}`, args);
   const { rows } = await query(
     `SELECT jc.arn, jc.created_at, jc.first_name, jc.last_name, jc.department, jc.section,
-            jc.crew_serial_number, jc.status, jc.technician_id, COALESCE(t.name, jc.technician_name) AS technician
+            jc.crew_serial_number, jc.status, jc.technician_id, jc.assigned_at, COALESCE(t.name, jc.technician_name) AS technician
        FROM job_cards jc LEFT JOIN technician_accounts t ON t.id = jc.technician_id
        ${whereSql}
       ORDER BY jc.created_at DESC
@@ -133,7 +136,26 @@ router.get("/api/job-cards", asyncRoute(async (req, res) => {
     crewSerialNumber: r.crew_serial_number,
     status: r.status,
     technician: r.technician,
+    receiptUrl: r.assigned_at ? `/admin/api/job-cards/${encodeURIComponent(r.arn)}/jobcard.pdf` : null,
   })), Number(n), page));
+}));
+
+// Printable job card (with the Materials Issued Sheet), once a technician is assigned.
+router.get("/api/job-cards/:arn/jobcard.pdf", asyncRoute(async (req, res) => {
+  const { rows: [jc] } = await query(
+    `SELECT jc.*, COALESCE(t.name, jc.technician_name) AS tech_name, COALESCE(t.phone, jc.technician_phone) AS tech_phone,
+            a.in_charge AS ac_in_charge, a.room_number AS ac_room_number, a.brand AS ac_brand, a.amc AS ac_amc,
+            a.amc_work_order_no AS ac_amc_work_order_no, a.amc_start_date AS ac_amc_start_date, a.amc_end_date AS ac_amc_end_date
+       FROM job_cards jc
+       LEFT JOIN technician_accounts t ON t.id = jc.technician_id
+       LEFT JOIN ac_units a ON a.crew_serial_number = jc.crew_serial_number
+      WHERE jc.arn = ?`,
+    [String(req.params.arn).toUpperCase()],
+  );
+  if (!jc) throw httpError(404, "Job card not found.");
+  if (!jc.assigned_at) throw httpError(409, "Assign a technician first; the job card PDF is available after that.");
+  res.set({ "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="jobcard-${jc.arn}.pdf"` });
+  jobCardPdf(jc).pipe(res);
 }));
 
 router.get("/api/job-cards/:arn", asyncRoute(async (req, res) => {
@@ -171,6 +193,7 @@ router.get("/api/job-cards/:arn", asyncRoute(async (req, res) => {
     materials: jc.materials_issued,
     materialIssuedAt: fmt(jc.material_issued_at),
     closedAt: fmt(jc.closed_at),
+    receiptUrl: jc.assigned_at ? `/admin/api/job-cards/${encodeURIComponent(jc.arn)}/jobcard.pdf` : null,
     files: files.map((f) => ({
       url: `/admin/files/attachment/${f.id}`,
       name: f.original_name,
@@ -247,6 +270,102 @@ router.get("/files/preventive/:ref", asyncRoute(async (req, res) => {
 
 const crewFor = (srNo) => `IACS/CREW/AC/${String(srNo).padStart(5, "0")}`;
 
+// Highest SR No. + 1. FOR UPDATE locks the top of the index so two inserts in
+// flight can't both read the same number.
+async function nextSrNo(tx) {
+  const { rows } = await tx.query("SELECT COALESCE(MAX(sr_no), 0) AS n FROM ac_units FOR UPDATE");
+  return Number(rows[0].n) + 1;
+}
+
+// ---- Bulk import from CSV ----
+
+router.get("/api/ac-units/template.csv", (_req, res) => {
+  res.set({ "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": 'attachment; filename="ac-units-import-template.csv"' });
+  res.send(templateCsv());
+});
+
+const csvBody = express.text({ type: ["text/csv", "text/plain", "application/vnd.ms-excel"], limit: "5mb" });
+const readCsv = (req) => {
+  if (typeof req.body !== "string" || !req.body.trim()) throw httpError(400, "Choose a CSV file to upload.");
+  return req.body;
+};
+const allSrNos = async (q) => new Set((await q("SELECT sr_no FROM ac_units")).rows.map((r) => Number(r.sr_no)));
+
+// Check a file and show what would happen; nothing is written.
+router.post("/api/ac-units/import/preview", csvBody, asyncRoute(async (req, res) => {
+  const result = analyseCsv(readCsv(req), await allSrNos(query));
+  if (result.fatal) throw httpError(400, result.fatal);
+  res.json({
+    counts: result.counts,
+    problems: result.problems.slice(0, 200),
+    moreProblems: Math.max(0, result.problems.length - 200),
+    unknownColumns: result.unknownColumns,
+    missingColumns: result.missingColumns,
+    total: result.rows.length,
+    sample: result.rows.slice(0, 100).map((r) => ({
+      line: r.line,
+      action: r.action,
+      crewSerialNumber: r.srNo ? crewFor(r.srNo) : null,
+      brand: r.data.brand,
+      roomNumber: r.data.room_number,
+      inCharge: r.data.in_charge,
+      school: r.data.school,
+      amc: r.data.amc,
+    })),
+  });
+}));
+
+// Import for real: all rows or none. Re-checks the file inside the transaction.
+router.post("/api/ac-units/import/commit", csvBody, asyncRoute(async (req, res) => {
+  const text = readCsv(req);
+  const outcome = await withTransaction(async (tx) => {
+    // Lock the AC table's rows so numbering can't race with another import/add.
+    const existing = new Set((await tx.query("SELECT sr_no FROM ac_units FOR UPDATE")).rows.map((r) => Number(r.sr_no)));
+    const result = analyseCsv(text, existing);
+    if (result.fatal) throw httpError(400, result.fatal);
+    if (result.counts.error) throw httpError(400, `${result.counts.error} row(s) have problems. Fix them and preview again.`);
+
+    let next = Math.max(0, ...existing, ...result.rows.map((r) => r.srNo ?? 0)) + 1;
+    const insertCols = ["crew_serial_number", "sr_no", ...EDIT_COLS];
+    const added = [];
+    let updated = 0;
+    for (const r of result.rows) {
+      if (r.action === "update") {
+        if (!r.provided.length) continue;
+        await tx.query(
+          `UPDATE ac_units SET ${r.provided.map((k) => `${k} = ?`).join(", ")}, updated_at = UTC_TIMESTAMP(3) WHERE sr_no = ?`,
+          [...r.provided.map((k) => r.data[k]), r.srNo],
+        );
+        updated++;
+      } else {
+        const srNo = r.srNo ?? next++;
+        await tx.query(
+          `INSERT INTO ac_units (${insertCols.join(", ")}) VALUES (${insertCols.map(() => "?").join(", ")})`,
+          [crewFor(srNo), srNo, ...EDIT_COLS.map((k) => r.data[k])],
+        );
+        added.push(srNo);
+      }
+    }
+    return { added: added.length, updated, newFrom: added.length ? crewFor(Math.min(...added)) : null, newTo: added.length ? crewFor(Math.max(...added)) : null };
+  });
+  res.json(outcome);
+}));
+
+// Printable keytag (PDF with a QR code of the CREW serial number). Not stored.
+router.get("/api/ac-units/:sr/keytag.pdf", asyncRoute(async (req, res) => {
+  const { rows: [ac] } = await query("SELECT crew_serial_number FROM ac_units WHERE sr_no = ?", [Number(req.params.sr) || 0]);
+  if (!ac) throw httpError(404, "AC not found.");
+  const file = `keytag-${ac.crew_serial_number.replace(/\//g, "-")}.pdf`;
+  res.set({ "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="${file}"` });
+  keytagPdf(ac.crew_serial_number).pipe(res);
+}));
+
+// The number the next new AC will get (shown in the Add AC form).
+router.get("/api/ac-units/next", asyncRoute(async (_req, res) => {
+  const { rows } = await query("SELECT COALESCE(MAX(sr_no), 0) + 1 AS n FROM ac_units");
+  res.json({ srNo: Number(rows[0].n), crewSerialNumber: crewFor(Number(rows[0].n)) });
+}));
+
 // Search ACs by CREW number (full or just the number), room, in-charge, school or brand.
 // `t` is an optional table alias such as "a.".
 function acSearch(q, t = "") {
@@ -281,21 +400,28 @@ router.get("/api/ac-units/:sr", asyncRoute(async (req, res) => {
 const acErrors = (errors) => Object.assign(httpError(400, "Please correct the highlighted fields."), { errors });
 const EDIT_COLS = AC_FIELDS.map((f) => f.key).filter((k) => k !== "sr_no");
 
+// New ACs get the next number after the highest one in the database (like an
+// auto-increment id): if the last is IACS/CREW/AC/00190 the next is ...00191.
+// Two admins adding at the same moment can collide on the unique key, so retry.
 router.post("/api/ac-units", asyncRoute(async (req, res) => {
-  const { data, errors } = validateAc(req.body ?? {});
+  const { data, errors } = validateAc({ ...(req.body ?? {}), sr_no: "" });
   if (Object.keys(errors).length) throw acErrors(errors);
-  const crew = crewFor(data.sr_no);
   const cols = ["crew_serial_number", "sr_no", ...EDIT_COLS];
-  try {
-    await query(
-      `INSERT INTO ac_units (${cols.join(", ")}) VALUES (${cols.map(() => "?").join(", ")})`,
-      [crew, data.sr_no, ...EDIT_COLS.map((k) => data[k])],
-    );
-  } catch (err) {
-    if (err.code === "ER_DUP_ENTRY") throw acErrors({ sr_no: `${crew} already exists.` });
-    throw err;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const created = await withTransaction(async (tx) => {
+        const srNo = await nextSrNo(tx);
+        await tx.query(
+          `INSERT INTO ac_units (${cols.join(", ")}) VALUES (${cols.map(() => "?").join(", ")})`,
+          [crewFor(srNo), srNo, ...EDIT_COLS.map((k) => data[k])],
+        );
+        return { crewSerialNumber: crewFor(srNo), srNo };
+      });
+      return res.status(201).json(created);
+    } catch (err) {
+      if (err.code !== "ER_DUP_ENTRY" || attempt >= 3) throw err;
+    }
   }
-  res.status(201).json({ crewSerialNumber: crew, srNo: data.sr_no });
 }));
 
 router.put("/api/ac-units/:sr", asyncRoute(async (req, res) => {

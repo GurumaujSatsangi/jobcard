@@ -126,6 +126,12 @@ function createList({ dialog, url, columns, empty, rowAction }) {
   return { load, reload: () => load(page) };
 }
 
+// Download button for the printable job card: a link when available,
+// a disabled button (with a reason on hover) until a technician is assigned.
+const receiptButton = (url, size) => url
+  ? `<a class="btn btn-subtle theme-secondary ${size}" href="${esc(url)}" target="_blank" rel="noopener" title="Download the job card PDF"><i class="bi bi-file-earmark-arrow-down" aria-hidden="true"></i> Receipt</a>`
+  : `<button type="button" class="btn btn-subtle theme-secondary ${size}" disabled title="Available after a technician is assigned"><i class="bi bi-file-earmark-arrow-down" aria-hidden="true"></i> Receipt</button>`;
+
 const statusPill = (s) =>
   `<span class="pill ${/CLOSED/.test(s) ? "pill-done" : ""}">${esc(s)}</span>`;
 
@@ -148,7 +154,11 @@ const statusPill = (s) =>
       { label: "Technician", render: (j) => dash(j.technician) },
     ],
     rowAction: {
-      render: (j, i) => `<button type="button" class="btn btn-outline theme-primary btn-sm" data-row="${i}">${j.technician || /CLOSED/.test(j.status) ? "View" : "Assign"}</button>`,
+      // "Receipt" (the printable job card) is enabled once a technician is assigned.
+      render: (j, i) => `<span class="row-actions">
+        ${receiptButton(j.receiptUrl, "btn-sm")}
+        <button type="button" class="btn btn-outline theme-primary btn-sm" data-row="${i}">${j.technician || /CLOSED/.test(j.status) ? "View" : "Assign"}</button>
+      </span>`,
       onClick: (j) => openJob(j.arn),
     },
   });
@@ -186,7 +196,10 @@ const statusPill = (s) =>
       `<option value="${t.id}" ${t.id === j.technicianId ? "selected" : ""}>${esc(t.name)} (Ext. ${esc(t.phone)})</option>`).join("");
 
     detail.innerHTML = `
-      <h3 class="h5 mb-4 font-monospace">${esc(j.arn)}</h3>
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <h3 class="h5 mb-0 font-monospace">${esc(j.arn)}</h3>
+        ${receiptButton(j.receiptUrl, "")}
+      </div>
       <div class="table-responsive mb-6"><table class="kv-table"><tbody>
         ${rows.map(([k, v]) => `<tr><th scope="row">${esc(k)}</th><td>${v}</td></tr>`).join("")}
       </tbody></table></div>
@@ -260,7 +273,8 @@ const statusPill = (s) =>
     }
     const type = f.type === "date" ? "date" : "text";
     const mode = f.type === "int" ? 'inputmode="numeric"' : f.type === "money" ? 'inputmode="decimal"' : "";
-    return `<input type="${type}" class="form-control" id="${id}" name="${f.key}" ${mode} ${f.max ? `maxlength="${f.max}"` : ""} ${f.required ? "required" : ""}>`;
+    // Auto-numbered fields are shown but never typed in.
+    return `<input type="${type}" class="form-control" id="${id}" name="${f.key}" ${mode} ${f.max ? `maxlength="${f.max}"` : ""} ${f.required ? "required" : ""} ${f.auto ? "readonly tabindex=\"-1\"" : ""}>`;
   }
 
   const list = createList({
@@ -277,7 +291,11 @@ const statusPill = (s) =>
       { label: "AMC", render: (a) => dash(a.amc) },
     ],
     rowAction: {
-      render: (_a, i) => `<button type="button" class="btn btn-outline theme-primary btn-sm" data-row="${i}">Edit</button>`,
+      render: (a, i) => `<span class="row-actions">
+        <a class="btn btn-subtle theme-secondary btn-sm" href="/admin/api/ac-units/${a.sr_no}/keytag.pdf" target="_blank" rel="noopener"
+           title="Printable keytag with QR code for ${esc(a.crew_serial_number)}"><i class="bi bi-qr-code" aria-hidden="true"></i> Keytag</a>
+        <button type="button" class="btn btn-outline theme-primary btn-sm" data-row="${i}">Edit</button>
+      </span>`,
       onClick: (a) => openForm(a.sr_no),
     },
   });
@@ -286,13 +304,19 @@ const statusPill = (s) =>
     form.reset();
     clearFormError(form);
     editing = srNo ?? null;
-    const srInput = form.elements.sr_no;
-    srInput.readOnly = editing !== null;
     $("[data-delete]", form).hidden = editing === null;
     $("[data-form-title]", form).textContent = editing === null ? "Add AC" : "Edit AC";
-    $("[data-form-sub]", form).textContent = editing === null ? "Fill in what you know; only SR No. is required." : "Loading…";
+    $("[data-form-sub]", form).textContent = editing === null ? "Fill in what you know; every field is optional." : "Loading…";
     showView(dialog, "detail");
-    if (editing === null) return srInput.focus();
+    if (editing === null) {
+      // Show the number this AC will get (the server assigns it on save).
+      try {
+        const next = await api("/admin/api/ac-units/next");
+        form.elements.sr_no.value = next.srNo;
+        $("[data-form-sub]", form).textContent = `Will be added as ${next.crewSerialNumber}. Every field is optional.`;
+      } catch { /* the server still assigns it */ }
+      return form.elements.brand.focus();
+    }
     try {
       const ac = await api(`/admin/api/ac-units/${editing}`);
       $("[data-form-sub]", form).textContent = ac.crew_serial_number;
@@ -313,11 +337,18 @@ const statusPill = (s) =>
     const btn = $("[data-save]", form);
     setBusy(btn, true);
     try {
-      if (editing === null) await api("/admin/api/ac-units", { method: "POST", body });
-      else await api(`/admin/api/ac-units/${editing}`, { method: "PUT", body });
+      let note;
+      if (editing === null) {
+        const created = await api("/admin/api/ac-units", { method: "POST", body });
+        note = `Added ${created.crewSerialNumber}.`;
+      } else {
+        await api(`/admin/api/ac-units/${editing}`, { method: "PUT", body });
+        note = `Saved ${$("[data-form-sub]", form).textContent}.`;
+      }
       setBusy(btn, false);
       showView(dialog, "list");
       list.reload();
+      listNote(note);
     } catch (err) {
       setBusy(btn, false);
       showFormError(form, err);
@@ -340,6 +371,117 @@ const statusPill = (s) =>
     }
   });
 
+  // A short success message above the list.
+  function listNote(msg) {
+    const note = document.createElement("div");
+    note.className = "flash flash-ok";
+    note.innerHTML = `<i class="bi bi-check-circle" aria-hidden="true"></i><span>${esc(msg)}</span>`;
+    $("[data-list]", dialog).before(note);
+    setTimeout(() => note.remove(), 6000);
+  }
+
+  /* ---- Bulk import from CSV ---- */
+  const importView = $('[data-view="import"]', dialog);
+  const fileInput = $("#acCsvFile");
+  const previewBox = $("[data-import-preview]", importView);
+  const importError = $("[data-import-error]", importView);
+  let csvText = null;
+
+  const actionPill = (a) =>
+    a === "add" ? '<span class="pill pill-done">New</span>'
+    : a === "update" ? '<span class="pill">Update</span>'
+    : '<span class="pill pill-err">Problem</span>';
+
+  function showImportError(msg) {
+    importError.innerHTML = `<i class="bi bi-exclamation-circle" aria-hidden="true"></i><span>${esc(msg)}</span>`;
+    importError.hidden = false;
+  }
+
+  function resetImport() {
+    csvText = null;
+    fileInput.value = "";
+    previewBox.innerHTML = "";
+    importError.hidden = true;
+    $("[data-file-name]", importView).textContent = "Nothing is saved until you click Import.";
+  }
+
+  async function postCsv(url) {
+    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "text/csv", Accept: "application/json" }, body: csvText });
+    if (res.status === 401) { location.href = "/admin/login"; throw new Error("Signed out"); }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Something went wrong.");
+    return data;
+  }
+
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files[0];
+    importError.hidden = true;
+    previewBox.innerHTML = "";
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) return showImportError("That file is over 5 MB. Split it into smaller files.");
+    $("[data-file-name]", importView).textContent = file.name;
+    csvText = await file.text();
+    previewBox.innerHTML = '<div class="list-msg"><span class="spinner-border spinner-sm"></span> Checking the file…</div>';
+    try {
+      renderPreview(await postCsv("/admin/api/ac-units/import/preview"));
+    } catch (err) {
+      previewBox.innerHTML = "";
+      showImportError(err.message);
+    }
+  });
+
+  function renderPreview(p) {
+    const { add, update, error } = p.counts;
+    const notes = [
+      p.unknownColumns.length && `Ignored columns not in the template: ${p.unknownColumns.join(", ")}.`,
+      p.missingColumns.length && p.missingColumns.length < 10 && `Columns not in your file (left unchanged / empty): ${p.missingColumns.join(", ")}.`,
+    ].filter(Boolean);
+    previewBox.innerHTML = `
+      <div class="form-section">
+        <div class="form-section-title">3. Preview</div>
+        <p class="mb-3"><strong>${p.total}</strong> row${p.total === 1 ? "" : "s"}:
+          <strong>${add}</strong> new, <strong>${update}</strong> update${update === 1 ? "" : "s"}${error ? `, <strong class="text-danger">${error}</strong> with problems` : ""}.</p>
+        ${notes.map((n) => `<p class="small text-muted-2 mb-2">${esc(n)}</p>`).join("")}
+        ${error ? `<div class="flash flash-err"><i class="bi bi-exclamation-circle"></i><span>Fix these in the file, then choose it again. Nothing has been imported.</span></div>
+          <ul class="problem-list">${p.problems.map((x) => `<li>${esc(x)}</li>`).join("")}${p.moreProblems ? `<li>…and ${p.moreProblems} more</li>` : ""}</ul>` : ""}
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead><tr><th>Line</th><th>Action</th><th>CREW No.</th><th>Brand</th><th>Room</th><th>In-charge</th><th>School</th><th>AMC</th></tr></thead>
+            <tbody>${p.sample.map((r) => `<tr>
+              <td>${r.line}</td><td>${actionPill(r.action)}</td>
+              <td class="font-monospace">${r.crewSerialNumber ? esc(r.crewSerialNumber) : '<span class="text-muted-2">next number</span>'}</td>
+              <td>${dash(r.brand)}</td><td>${dash(r.roomNumber)}</td><td>${dash(r.inCharge)}</td><td>${dash(r.school)}</td><td>${dash(r.amc)}</td>
+            </tr>`).join("")}</tbody>
+          </table>
+        </div>
+        ${p.total > p.sample.length ? `<p class="small text-muted-2 mt-2">Showing the first ${p.sample.length} of ${p.total} rows.</p>` : ""}
+      </div>
+      <div class="form-actions">
+        <span class="flex-grow-1"></span>
+        <button type="button" class="btn btn-subtle theme-secondary" data-import-cancel>Cancel</button>
+        <button type="button" class="btn btn-solid theme-primary" data-import-go ${error || !(add + update) ? "disabled" : ""}>
+          Import ${add + update} AC${add + update === 1 ? "" : "s"}
+        </button>
+      </div>`;
+
+    $("[data-import-cancel]", previewBox).addEventListener("click", resetImport);
+    $("[data-import-go]", previewBox).addEventListener("click", async (e) => {
+      const btn = e.currentTarget;
+      setBusy(btn, true, "Importing…");
+      try {
+        const r = await postCsv("/admin/api/ac-units/import/commit");
+        resetImport();
+        showView(dialog, "list");
+        list.load(1);
+        listNote(`Imported: ${r.added} added${r.newFrom ? ` (${r.newFrom}${r.newTo !== r.newFrom ? ` to ${r.newTo}` : ""})` : ""}, ${r.updated} updated.`);
+      } catch (err) {
+        setBusy(btn, false);
+        showImportError(err.message);
+      }
+    });
+  }
+
+  $("[data-import]", dialog).addEventListener("click", () => { resetImport(); showView(dialog, "import"); });
   $("[data-add]", dialog).addEventListener("click", () => openForm(null));
   $$("[data-back]", dialog).forEach((b) => b.addEventListener("click", () => showView(dialog, "list")));
   dialog.addEventListener("show.bs.dialog", () => { showView(dialog, "list"); list.load(1); });

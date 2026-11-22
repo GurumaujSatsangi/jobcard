@@ -48,6 +48,10 @@ Admins sign in at `/admin/login` with their official email and a password. The d
 
 - **Manage job card applications**: every job card, filter by section and status, search by ARN or CREW number, view details and files, and assign or reassign a technician from that job's section.
 - **Manage AC database**: search, add, edit and delete rows of `ac_units`. An AC with job cards or preventive services can't be deleted.
+  - **Add AC** numbers the AC automatically: highest existing SR No. + 1 (e.g. after `IACS/CREW/AC/00190` comes `…00191`).
+  - **Import CSV**: download the template, fill it in, upload it, check the preview, then **Import**. Blank CREW Serial No. = new AC (auto-numbered); a CREW Serial No. = update that AC (only filled-in cells change). All rows are imported together or not at all.
+  - **Keytag**: a printable A6 PDF with the CREW serial number and a QR code, generated on the fly (not stored).
+- **Scan QR on keytag** (job card form): reads the keytag's QR with the camera (HTTPS or localhost) or from a photo, fills the CREW Serial No. and fetches the AC details automatically.
 - **Preventive service**: ACs with AMC = Yes; apply for Preventive Service 1–4 (each once per AC), assigned straight to an AC technician. The requester is the signed-in admin's profile. Technicians see these on My Jobs with a "Preventive Service" badge and close them with a receipt photo. The **Applications** tab lists all of them.
   - **Download & reset** is enabled during April (India time), once per financial year. It downloads the register as CSV, keeps a copy in `exports/`, and empties `preventive_services`. Set `PS_RESET_ALWAYS_ENABLED=true` only to test it outside April.
 
