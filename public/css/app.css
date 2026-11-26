@@ -360,6 +360,35 @@
   .chip-ps { display: inline-block; min-width: 2.2rem; text-align: center; padding: .1rem .35rem; border-radius: 999px; font-size: 11px; font-weight: 600; border: 1px solid var(--line); color: var(--text-muted); }
   .chip-ps.is-done { background: light-dark(#e6f4ea, #15301f); border-color: light-dark(#b7dfc3, #24543a); color: light-dark(#146c2e, #8fe0ac); }
 
+  /* ---------- Store: issue items ---------- */
+  .action-card.is-soon { opacity: .7; }
+  .issue-grid { display: grid; gap: 1.25rem; }
+  @media (min-width: 992px) { .issue-grid { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; } }
+  .item-list { max-height: 26rem; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius-card); }
+  .item-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; padding: .7rem .9rem; border-bottom: 1px solid var(--line); }
+  .item-row:last-child { border-bottom: 0; }
+  .item-row.in-cart { background: var(--accent-tint); }
+  .item-info { min-width: 0; flex: 1 1 14rem; }
+  .item-name { font-weight: 500; color: var(--text-strong); }
+  .qty-ctl { display: inline-flex; align-items: center; gap: .3rem; }
+  .qty-btn { width: 2.1rem; height: 2.1rem; border-radius: var(--radius); border: 1px solid var(--input-line); background: var(--surface); color: var(--text-strong); font-size: 1.1rem; line-height: 1; cursor: pointer; }
+  .qty-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .qty-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .qty-input { width: 5.2rem; height: 2.1rem; text-align: center; border: 1px solid var(--input-line); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 15px; }
+  .qty-input.is-invalid, .form-control.is-invalid { border-color: #d9534f; }
+  .qty-unit { min-width: 2.5rem; font-size: 13px; color: var(--text-muted); }
+  .cart { border: 1px solid var(--line); border-radius: var(--radius-card); padding: 1rem; background: var(--surface-alt); }
+  @media (min-width: 992px) { .cart { position: sticky; top: 0; } }
+  .cart-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: .6rem; }
+  .cart-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
+  .cart-lines li { display: flex; align-items: center; gap: .6rem; padding: .5rem .6rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+  .cart-lines .cart-name { flex: 1; min-width: 0; }
+  .cart-lines .cart-qty { font-weight: 600; white-space: nowrap; }
+  .cart-lines .cart-empty { justify-content: center; color: var(--text-muted); font-size: 14px; border-style: dashed; }
+  .slip-list { display: grid; gap: .75rem; }
+  .slip { border: 1px solid var(--line); border-radius: var(--radius-card); padding: .9rem 1rem; }
+  .slip-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: .5rem; margin-bottom: .6rem; }
+
   /* Technician: preventive service badge in the job list */
   .badge-ps { display: inline-block; margin-left: .6rem; padding: .15rem .55rem; border-radius: 999px; font-size: 12px; font-weight: 600; vertical-align: middle;
     background: light-dark(#fff4e0, #3a2a10); color: light-dark(#8a5300, #ffc46b); font-family: var(--bs-body-font-family); letter-spacing: 0; }
@@ -373,4 +402,22 @@
   }
   .site-footer .inner { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem 1.5rem; padding-block: 1.25rem; }
   .site-footer a { color: var(--link); }
+}
+
+/* Store inventory list: rows become stacked cards on phones so the buttons stay visible. */
+@layer custom {
+  @media (max-width: 575.98px) {
+    .inv-table thead { display: none; }
+    .inv-table tbody tr { display: grid; grid-template-columns: 1fr auto; gap: .35rem .75rem; padding: .85rem .25rem; border-bottom: 1px solid var(--line); }
+    .inv-table tbody td { border: 0; padding: 0; }
+    .inv-table tbody td:nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
+    .inv-table tbody td:nth-child(4) { grid-column: 1 / -1; text-align: left !important; }
+    .inv-table .row-actions { flex-wrap: wrap; white-space: normal; }
+  }
+}
+
+/* Store memo record book */
+@layer custom {
+  .memo-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .memo-table td:first-child { width: 9rem; }
 }

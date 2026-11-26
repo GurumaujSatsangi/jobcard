@@ -294,6 +294,8 @@ const statusPill = (s) =>
       render: (a, i) => `<span class="row-actions">
         <a class="btn btn-subtle theme-secondary btn-sm" href="/admin/api/ac-units/${a.sr_no}/keytag.pdf" target="_blank" rel="noopener"
            title="Printable keytag with QR code for ${esc(a.crew_serial_number)}"><i class="bi bi-qr-code" aria-hidden="true"></i> Keytag</a>
+        <a class="btn btn-subtle theme-secondary btn-sm" href="/admin/api/ac-units/${a.sr_no}/history.pdf" target="_blank" rel="noopener"
+           title="Service history PDF for ${esc(a.crew_serial_number)}"><i class="bi bi-clock-history" aria-hidden="true"></i> View service history</a>
         <button type="button" class="btn btn-outline theme-primary btn-sm" data-row="${i}">Edit</button>
       </span>`,
       onClick: (a) => openForm(a.sr_no),

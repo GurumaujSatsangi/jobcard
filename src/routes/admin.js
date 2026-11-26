@@ -12,6 +12,7 @@ import { AC_FIELDS, validateAc } from "../ac-fields.js";
 import { analyseCsv, templateCsv } from "../ac-import.js";
 import { keytagPdf } from "../keytag.js";
 import { jobCardPdf } from "../jobcard-pdf.js";
+import { serviceHistoryPdf } from "../service-history-pdf.js";
 import { verifyAdmin, startSession, endSession, getAdmin, requireAdmin } from "../auth/admin-auth.js";
 import { sameOriginOnly } from "../auth/session-auth.js";
 import { UPLOAD_DIR } from "./api.js";
@@ -358,6 +359,20 @@ router.get("/api/ac-units/:sr/keytag.pdf", asyncRoute(async (req, res) => {
   const file = `keytag-${ac.crew_serial_number.replace(/\//g, "-")}.pdf`;
   res.set({ "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="${file}"` });
   keytagPdf(ac.crew_serial_number).pipe(res);
+}));
+
+// Service history PDF: AC details plus every job card for it. Not stored.
+router.get("/api/ac-units/:sr/history.pdf", asyncRoute(async (req, res) => {
+  const { rows: [ac] } = await query("SELECT * FROM ac_units WHERE sr_no = ?", [Number(req.params.sr) || 0]);
+  if (!ac) throw httpError(404, "AC not found.");
+  const { rows: jobs } = await query(
+    `SELECT arn, created_at, closed_at, status, description, materials_issued
+       FROM job_cards WHERE crew_serial_number = ? ORDER BY created_at DESC`,
+    [ac.crew_serial_number],
+  );
+  const file = `service-history-${ac.crew_serial_number.replace(/\//g, "-")}.pdf`;
+  res.set({ "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="${file}"` });
+  serviceHistoryPdf(ac, jobs).pipe(res);
 }));
 
 // The number the next new AC will get (shown in the Add AC form).

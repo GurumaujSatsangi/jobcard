@@ -271,6 +271,125 @@ const SCHEMA = [
      rows_removed INT UNSIGNED NOT NULL,
      export_file VARCHAR(255) NOT NULL
    ) ${TABLE_OPTS}`,
+
+  // ---- Store management ----
+
+  // Store in-charges sign in with official email + password.
+  `CREATE TABLE IF NOT EXISTS store_accounts (
+     id              INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+     name            VARCHAR(255) NOT NULL,
+     email           VARCHAR(255) NOT NULL,
+     contact_number  VARCHAR(32)  NOT NULL,
+     password_hash   VARCHAR(100) NOT NULL,
+     active          TINYINT(1)   NOT NULL DEFAULT 1,
+     created_at      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+     UNIQUE KEY store_accounts_email_uq (email)
+   ) ${TABLE_OPTS}`,
+
+  `CREATE TABLE IF NOT EXISTS store_sessions (
+     id                 CHAR(36)     NOT NULL PRIMARY KEY,
+     store_id           INT UNSIGNED NOT NULL,
+     refresh_hash       CHAR(64)     NOT NULL,
+     prev_refresh_hash  CHAR(64),
+     rotated_at         DATETIME(3),
+     created_at         DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+     last_used_at       DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+     expires_at         DATETIME(3)  NOT NULL,
+     revoked_at         DATETIME(3),
+     user_agent         VARCHAR(300),
+     ip                 VARCHAR(64),
+     KEY store_sessions_store_idx (store_id),
+     CONSTRAINT store_sessions_store_fk FOREIGN KEY (store_id)
+       REFERENCES store_accounts (id) ON DELETE CASCADE
+   ) ${TABLE_OPTS}`,
+
+  // Store inventory. quantity is the stock in hand, in the item's unit;
+  // decimal_allowed = 1 for items issued in fractions (e.g. 15.46 cm of pipe).
+  `CREATE TABLE IF NOT EXISTS inventory_items (
+     id               INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+     item_code        VARCHAR(64)  NOT NULL,
+     item_name        VARCHAR(255) NOT NULL,
+     make             VARCHAR(120),
+     unit            VARCHAR(32)  NOT NULL DEFAULT 'Nos',
+     decimal_allowed  TINYINT(1)   NOT NULL DEFAULT 0,
+     quantity         DECIMAL(14,3) NOT NULL DEFAULT 0,
+     active           TINYINT(1)   NOT NULL DEFAULT 1,
+     created_at       DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+     updated_at       DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+     UNIQUE KEY inventory_items_code_uq (item_code),
+     KEY inventory_items_name_idx (item_name)
+   ) ${TABLE_OPTS}`,
+
+  // One row per issue ("slip") against a job card. A job card can have several
+  // (issuing more later); a slip can be edited, adjusting stock by the difference.
+  `CREATE TABLE IF NOT EXISTS material_issues (
+     id                 INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+     job_card_id        INT UNSIGNED NOT NULL,
+     mr_slip_no         VARCHAR(64)  NOT NULL,
+     issued_by_store_id INT UNSIGNED,
+     issued_by_name     VARCHAR(255) NOT NULL,
+     issued_at          DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+     updated_at         DATETIME(3),
+     updated_by_name    VARCHAR(255),
+     KEY material_issues_job_idx (job_card_id),
+     CONSTRAINT material_issues_job_fk FOREIGN KEY (job_card_id) REFERENCES job_cards (id),
+     CONSTRAINT material_issues_store_fk FOREIGN KEY (issued_by_store_id)
+       REFERENCES store_accounts (id) ON DELETE SET NULL
+   ) ${TABLE_OPTS}`,
+
+  // Items on a slip. Code/name/unit are copied so the record stays readable
+  // even if the inventory item is renamed later.
+  `CREATE TABLE IF NOT EXISTS material_issue_items (
+     id          INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+     issue_id    INT UNSIGNED NOT NULL,
+     item_id     INT UNSIGNED NOT NULL,
+     item_code   VARCHAR(64)  NOT NULL,
+     item_name   VARCHAR(255) NOT NULL,
+     unit        VARCHAR(32)  NOT NULL,
+     quantity    DECIMAL(14,3) NOT NULL,
+     KEY material_issue_items_issue_idx (issue_id),
+     KEY material_issue_items_item_idx (item_id),
+     CONSTRAINT material_issue_items_issue_fk FOREIGN KEY (issue_id)
+       REFERENCES material_issues (id) ON DELETE CASCADE,
+     CONSTRAINT material_issue_items_item_fk FOREIGN KEY (item_id) REFERENCES inventory_items (id)
+   ) ${TABLE_OPTS}`,
+
+  // Stock received for an item (a purchase). Adds to inventory_items.quantity.
+  // Files (PO / indent, invoice) are kept in uploads/store-purchases/.
+  `CREATE TABLE IF NOT EXISTS inventory_purchases (
+     id                    INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+     item_id               INT UNSIGNED NOT NULL,
+     purchase_head         VARCHAR(64)  NOT NULL,
+     quantity              DECIMAL(14,3) NOT NULL,
+     rate                  DECIMAL(14,2),
+     po_file               VARCHAR(255),
+     po_file_original      VARCHAR(255),
+     po_file_mime          VARCHAR(100),
+     invoice_file          VARCHAR(255),
+     invoice_file_original VARCHAR(255),
+     invoice_file_mime     VARCHAR(100),
+     remarks               TEXT,
+     added_by_store_id     INT UNSIGNED,
+     added_by_name         VARCHAR(255) NOT NULL,
+     created_at            DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+     KEY inventory_purchases_item_idx (item_id),
+     CONSTRAINT inventory_purchases_item_fk FOREIGN KEY (item_id) REFERENCES inventory_items (id),
+     CONSTRAINT inventory_purchases_store_fk FOREIGN KEY (added_by_store_id)
+       REFERENCES store_accounts (id) ON DELETE SET NULL
+   ) ${TABLE_OPTS}`,
+
+  // Store memo record book: a date and a description per memo.
+  `CREATE TABLE IF NOT EXISTS store_memos (
+     id                INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+     memo_date         DATE         NOT NULL,
+     description       TEXT         NOT NULL,
+     added_by_store_id INT UNSIGNED,
+     added_by_name     VARCHAR(255) NOT NULL,
+     created_at        DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+     KEY store_memos_date_idx (memo_date),
+     CONSTRAINT store_memos_store_fk FOREIGN KEY (added_by_store_id)
+       REFERENCES store_accounts (id) ON DELETE SET NULL
+   ) ${TABLE_OPTS}`,
 ];
 
 async function columnExists(table, column) {
@@ -298,6 +417,11 @@ export async function initDb() {
   }
 
   for (const statement of SCHEMA) await query(statement);
+
+  // inventory_items got a make/brand column after it was first created.
+  if (!(await columnExists("inventory_items", "make"))) {
+    await query("ALTER TABLE inventory_items ADD COLUMN make VARCHAR(120) AFTER item_name");
+  }
 
   // The first version of ac_units had only a few columns. `npm run import:ac`
   // upgrades it; until then, warn instead of failing later with odd SQL errors.

@@ -15,6 +15,25 @@ Open http://localhost:3000. Tables are created on first start (`src/db.js`), and
 
 > **PowerShell:** PowerShell drops the `--` in `npm run <script> -- <args>`, so npm swallows options like `--email`. In PowerShell run the scripts with node directly, e.g. `node scripts/admin.js list` instead of `npm run admin -- list`.
 
+## Updating the live site (cPanel)
+
+The app runs from `/home/fcroveif/home/fcroveif/jobcard` under cPanel "Setup Node.js App" (LiteSpeed). After pushing to GitHub, in cPanel **Terminal**:
+
+```bash
+cd ~/home/fcroveif/jobcard
+git checkout -- package-lock.json   # Run NPM Install rewrites it, which blocks git pull
+git pull
+```
+
+Then **Setup Node.js App → Run NPM Install** (needed when packages changed), and restart the app. LiteSpeed doesn't always pick up the Restart button, so stop the old process; it starts again with the new code on the next visit:
+
+```bash
+pkill -u $USER -f 'lsnode|app.cjs'
+cat stderr.log   # after opening the site once; empty = started fine
+```
+
+Files under `public/` (CSS, JS) update as soon as you pull; server code only after the restart.
+
 ## Database
 
 MySQL 8 or MariaDB 10.6+. Create an empty database with collation `utf8mb4_unicode_ci` and a user with all privileges on it. The app creates its tables on first start. Times are stored in UTC and shown in India time.

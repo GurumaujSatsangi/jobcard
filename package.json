@@ -10,7 +10,8 @@
     "technician": "node scripts/technician.js",
     "seed:demo": "node scripts/seed-demo.js",
     "import:ac": "node scripts/import-ac-units.js",
-    "admin": "node scripts/admin.js"
+    "admin": "node scripts/admin.js",
+    "store": "node scripts/store.js"
   },
   "license": "ISC",
   "dependencies": {

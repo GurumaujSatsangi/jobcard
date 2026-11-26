@@ -10,6 +10,11 @@
         <form method="post" action="/admin/logout" class="m-0">
           <button type="submit" class="header-link"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Log out</button>
         </form>
+      <% } else if (locals.store) { %>
+        <span class="header-user d-none sm:d-inline"><i class="bi bi-person-circle" aria-hidden="true"></i> <%= store.name %></span>
+        <form method="post" action="/store/logout" class="m-0">
+          <button type="submit" class="header-link"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Log out</button>
+        </form>
       <% } else if (locals.technician) { %>
         <span class="header-user d-none sm:d-inline"><i class="bi bi-person-circle" aria-hidden="true"></i> <%= technician.name %></span>
         <form method="post" action="/technician/logout" class="m-0">

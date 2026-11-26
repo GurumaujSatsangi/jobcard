@@ -42,3 +42,18 @@ export function normalizeCrewSerial(input) {
 
 export const sectionLabel = (value) => SECTIONS.find((s) => s.value === value)?.label ?? value;
 export const itemTypeLabel = (value) => AC_ITEM_TYPES.find((t) => t.value === value)?.label ?? value;
+
+// Store units of measurement. `decimal` = can be issued in fractions (15.46 cm).
+export const STORE_UNITS = [
+  { value: "Nos", label: "Units (Number)", decimal: false },
+  { value: "kg", label: "Kilogram (Kg)", decimal: true },
+  { value: "Boxes", label: "Number of Boxes", decimal: false },
+  { value: "Canes", label: "Number of Canes", decimal: false },
+  { value: "m", label: "Metre (m)", decimal: true },
+  { value: "cm", label: "Centimetre (cm)", decimal: true },
+  { value: "L", label: "Litre (L)", decimal: true },
+  { value: "inch", label: "Inch", decimal: true },
+  { value: "ft", label: "Feet", decimal: true },
+  { value: "g", label: "Gram", decimal: true },
+  { value: "sq inch", label: "Square Inch", decimal: true },
+];

@@ -1,0 +1,277 @@
+<%- include("../partials/head") %>
+<%- include("../partials/header") %>
+
+<main class="flex-grow-1 page">
+  <div class="container">
+    <div class="page-head">
+      <h1>Store</h1>
+      <p><%= store.name %> &middot; Store Management System</p>
+    </div>
+
+    <div class="row g-5">
+      <div class="col-12 md:col-4">
+        <section class="panel panel-body action-card">
+          <h2><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> Issue items</h2>
+          <p>Issue materials against a job card (ARN), or add to / change an earlier issue.</p>
+          <button type="button" class="btn btn-solid theme-primary" data-bs-toggle="dialog" data-bs-target="#issueDialog">Open</button>
+        </section>
+      </div>
+      <div class="col-12 md:col-4">
+        <section class="panel panel-body action-card">
+          <h2><i class="bi bi-boxes" aria-hidden="true"></i> Manage inventory</h2>
+          <p>See stock, register new items, add purchase records and view where an item was issued.</p>
+          <button type="button" class="btn btn-solid theme-primary" data-bs-toggle="dialog" data-bs-target="#inventoryDialog">Open</button>
+        </section>
+      </div>
+      <div class="col-12 md:col-4">
+        <section class="panel panel-body action-card">
+          <h2><i class="bi bi-journal-text" aria-hidden="true"></i> Memo record book</h2>
+          <p>See all memos and record a new one.</p>
+          <button type="button" class="btn btn-solid theme-primary" data-bs-toggle="dialog" data-bs-target="#memoDialog">Open</button>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ============ Issue items ============ -->
+<dialog class="dialog dialog-xl dialog-scrollable admin-dialog" id="issueDialog" aria-labelledby="issueTitle">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="issueTitle">Issue items</h2>
+    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+  </div>
+  <div class="dialog-body">
+    <form id="arnForm" class="toolbar" novalidate>
+      <input type="text" class="form-control text-uppercase" id="arnInput" placeholder="Enter ARN, e.g. JC2026000001" aria-label="ARN" autocomplete="off">
+      <button type="submit" class="btn btn-solid theme-primary" id="arnFindBtn">Find job card</button>
+    </form>
+
+    <div id="arnError"></div>
+
+    <div id="jobArea" hidden>
+      <div class="form-section">
+        <div class="form-section-title">Job card</div>
+        <div class="table-responsive"><table class="kv-table"><tbody id="jobDetails"></tbody></table></div>
+      </div>
+
+      <div class="form-section" id="slipsSection" hidden>
+        <div class="form-section-title">Items already issued</div>
+        <div id="slipsList" class="slip-list"></div>
+      </div>
+
+      <div class="form-section" id="issueSection">
+        <div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-3">
+          <div class="form-section-title mb-0" id="issueHeading">Issue items</div>
+          <button type="button" class="btn btn-subtle theme-secondary btn-sm" id="cancelEditBtn" hidden>Cancel editing</button>
+        </div>
+        <div class="flash flash-err" id="issueError" role="alert" hidden></div>
+
+        <div class="issue-grid">
+          <div>
+            <label class="form-label" for="itemSearch">Inventory</label>
+            <input type="search" class="form-control mb-3" id="itemSearch" placeholder="Search by item code or name" autocomplete="off">
+            <div class="item-list" id="itemList" aria-live="polite"></div>
+          </div>
+
+          <div class="cart">
+            <div class="cart-head">
+              <span class="field-label mb-0">Items to issue</span>
+              <span class="small text-muted-2" id="cartCount">0 items</span>
+            </div>
+            <ul class="cart-lines" id="cartLines"></ul>
+            <div class="field mt-4">
+              <label class="form-label" for="mrSlipNo">MR Slip Number <span class="req">*</span></label>
+              <input type="text" class="form-control" id="mrSlipNo" maxlength="64" autocomplete="off" required>
+              <div class="invalid-feedback" id="mrSlipFeedback">MR Slip Number is required.</div>
+            </div>
+            <button type="button" class="btn btn-solid theme-primary btn-lg w-100" id="issueSubmitBtn" disabled>Issue items</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<!-- ============ Manage inventory ============ -->
+<dialog class="dialog dialog-xl dialog-scrollable admin-dialog" id="inventoryDialog" aria-labelledby="inventoryTitle">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="inventoryTitle">Manage inventory</h2>
+    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+  </div>
+  <div class="dialog-body">
+
+    <!-- List of all items -->
+    <div data-inv-view="list">
+      <div class="flash flash-ok" id="invNote" role="status" hidden></div>
+      <div class="toolbar">
+        <input type="search" class="form-control" id="invSearch" placeholder="Search by item code or name" aria-label="Search items" autocomplete="off">
+        <button type="button" class="btn btn-solid theme-primary" id="invNewBtn"><i class="bi bi-plus-lg" aria-hidden="true"></i> Register new item</button>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table inv-table">
+          <thead><tr><th>Item code</th><th>Item description</th><th class="text-end">Available</th><th><span class="visually-hidden">Actions</span></th></tr></thead>
+          <tbody id="invRows"></tbody>
+        </table>
+      </div>
+      <div id="invMsg"></div>
+    </div>
+
+    <!-- Register a new item -->
+    <div data-inv-view="new" hidden>
+      <button type="button" class="btn btn-subtle theme-secondary btn-sm mb-4" data-inv-back><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to list</button>
+      <form id="newItemForm" novalidate>
+        <h3 class="h5 mb-4">Register new item</h3>
+        <div class="flash flash-err" data-form-error role="alert" hidden></div>
+        <div class="field">
+          <label class="form-label" for="niCode">Item Code <span class="req">*</span></label>
+          <input type="text" class="form-control" id="niCode" name="code" maxlength="64" autocomplete="off" required>
+          <div class="invalid-feedback" data-for="code"></div>
+        </div>
+        <div class="field">
+          <label class="form-label" for="niName">Item Description <span class="req">*</span></label>
+          <textarea class="form-control" id="niName" name="name" maxlength="255" rows="3" required></textarea>
+          <div class="invalid-feedback" data-for="name"></div>
+        </div>
+        <div class="field" role="radiogroup" aria-labelledby="niUnitLabel" aria-required="true">
+          <span class="field-label" id="niUnitLabel">Unit of Measurement <span class="req">*</span></span>
+          <div class="choice-list two-col">
+            <% STORE_UNITS.forEach((u, i) => { %>
+            <label class="choice" for="niUnit-<%= i %>">
+              <input class="radio" type="radio" name="unit" id="niUnit-<%= i %>" value="<%= u.value %>" required>
+              <span><%= u.label %></span>
+            </label>
+            <% }) %>
+          </div>
+          <div class="invalid-feedback" data-for="unit"></div>
+        </div>
+        <div class="field">
+          <label class="form-label" for="niMake">Make / Brand Name <span class="req">*</span></label>
+          <input type="text" class="form-control" id="niMake" name="make" maxlength="120" autocomplete="off" required>
+          <div class="invalid-feedback" data-for="make"></div>
+        </div>
+        <div class="form-actions">
+          <span class="flex-grow-1"></span>
+          <button type="button" class="btn btn-subtle theme-secondary" data-inv-back>Cancel</button>
+          <button type="submit" class="btn btn-solid theme-primary">Register item</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Add an inventory (purchase) record for one item -->
+    <div data-inv-view="purchase" hidden>
+      <button type="button" class="btn btn-subtle theme-secondary btn-sm mb-4" data-inv-back><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to list</button>
+      <div class="form-section">
+        <div class="form-section-title">Item</div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead><tr><th>Item code</th><th>Item description</th><th>Unit</th><th>Make / Brand</th><th class="text-end">Available</th></tr></thead>
+            <tbody id="pItem"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <form id="purchaseForm" class="form-section" novalidate>
+        <div class="form-section-title">Purchase details</div>
+        <div class="flash flash-err" data-form-error role="alert" hidden></div>
+        <div class="row g-4">
+          <div class="col-12 md:col-6 field">
+            <label class="form-label" for="pHead">Purchase Head <span class="req">*</span></label>
+            <input type="text" class="form-control" id="pHead" name="purchaseHead" maxlength="64" list="pHeadList" placeholder="e.g. PO" autocomplete="off" required>
+            <datalist id="pHeadList"><option value="PO"><option value="Contingency"></datalist>
+            <div class="invalid-feedback" data-for="purchaseHead"></div>
+          </div>
+          <div class="col-12 md:col-6 field">
+            <label class="form-label" for="pQty">Quantity <span class="req">*</span> <span class="form-text" id="pQtyUnit"></span></label>
+            <input type="text" class="form-control" id="pQty" name="quantity" maxlength="20" autocomplete="off" required>
+            <div class="invalid-feedback" data-for="quantity"></div>
+          </div>
+          <div class="col-12 md:col-6 field">
+            <label class="form-label" for="pRate">Rate <span class="form-text">(₹ per unit)</span></label>
+            <input type="text" class="form-control" id="pRate" name="rate" inputmode="decimal" maxlength="20" autocomplete="off">
+            <div class="invalid-feedback" data-for="rate"></div>
+          </div>
+          <div class="col-12 md:col-6 field">
+            <label class="form-label" for="pPo">PO / Indent <span class="form-text">(if purchased under contingency)</span></label>
+            <input type="file" class="form-control" id="pPo" name="poFile" accept=".pdf,.jpg,.jpeg,.png,.webp">
+            <div class="invalid-feedback" data-for="poFile"></div>
+          </div>
+          <div class="col-12 md:col-6 field">
+            <label class="form-label" for="pInvoice">Invoice</label>
+            <input type="file" class="form-control" id="pInvoice" name="invoiceFile" accept=".pdf,.jpg,.jpeg,.png,.webp">
+            <div class="invalid-feedback" data-for="invoiceFile"></div>
+          </div>
+          <div class="col-12 field">
+            <label class="form-label" for="pRemarks">Remarks</label>
+            <textarea class="form-control" id="pRemarks" name="remarks" maxlength="2000" rows="3"></textarea>
+            <div class="invalid-feedback" data-for="remarks"></div>
+          </div>
+        </div>
+        <p class="form-text">PDF, JPG, PNG or WEBP, up to 10 MB each. The quantity is added to the stock.</p>
+        <div class="form-actions">
+          <span class="flex-grow-1"></span>
+          <button type="button" class="btn btn-subtle theme-secondary" data-inv-back>Cancel</button>
+          <button type="submit" class="btn btn-solid theme-primary">Submit purchase</button>
+        </div>
+      </form>
+
+      <div class="form-section" id="pHistorySection" hidden>
+        <div class="form-section-title">Earlier purchase records</div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead><tr><th>Added on</th><th>Purchase head</th><th class="text-end">Quantity</th><th class="text-end">Rate</th><th>Documents</th><th>Remarks</th></tr></thead>
+            <tbody id="pHistory"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<!-- ============ Memo record book ============ -->
+<dialog class="dialog dialog-lg dialog-scrollable admin-dialog" id="memoDialog" aria-labelledby="memoTitle">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="memoTitle">Memo record book</h2>
+    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+  </div>
+  <div class="dialog-body">
+    <div data-memo-view="list">
+      <div class="flash flash-ok" id="memoNote" role="status" hidden></div>
+      <div class="toolbar">
+        <input type="search" class="form-control" id="memoSearch" placeholder="Search memos" aria-label="Search memos" autocomplete="off">
+        <button type="button" class="btn btn-solid theme-primary" id="memoNewBtn"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add memo</button>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table memo-table">
+          <thead><tr><th>Memo date</th><th>Description</th></tr></thead>
+          <tbody id="memoRows"></tbody>
+        </table>
+      </div>
+      <div id="memoMsg"></div>
+    </div>
+
+    <div data-memo-view="new" hidden>
+      <button type="button" class="btn btn-subtle theme-secondary btn-sm mb-4" data-memo-back><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to list</button>
+      <form id="memoForm" novalidate>
+        <h3 class="h5 mb-4">Add memo</h3>
+        <div class="flash flash-err" data-form-error role="alert" hidden></div>
+        <div class="field">
+          <label class="form-label" for="memoDate">Memo Date <span class="req">*</span></label>
+          <input type="date" class="form-control" id="memoDate" name="memoDate" required style="max-width: 16rem">
+          <div class="invalid-feedback" data-for="memoDate"></div>
+        </div>
+        <div class="field">
+          <label class="form-label" for="memoDesc">Description <span class="req">*</span></label>
+          <textarea class="form-control" id="memoDesc" name="description" rows="6" maxlength="5000" required></textarea>
+          <div class="invalid-feedback" data-for="description"></div>
+        </div>
+        <div class="form-actions">
+          <span class="flex-grow-1"></span>
+          <button type="button" class="btn btn-subtle theme-secondary" data-memo-back>Cancel</button>
+          <button type="submit" class="btn btn-solid theme-primary">Save memo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</dialog>
+
+<%- include("../partials/footer", { scripts: ["/js/store.js", "/js/store-inventory.js", "/js/store-memos.js"] }) %>

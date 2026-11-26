@@ -8,6 +8,7 @@ import { initDb } from "./db.js";
 import apiRouter, { UPLOAD_DIR } from "./routes/api.js";
 import technicianRouter from "./routes/technician.js";
 import adminRouter from "./routes/admin.js";
+import storeRouter from "./routes/store.js";
 import { SECTIONS, AC_ITEM_TYPES, HELPDESK, OFFICIAL_EMAIL_DOMAIN } from "./constants.js";
 
 const app = express();
@@ -50,12 +51,11 @@ app.locals.year = new Date().getFullYear();
 
 app.get("/", (_req, res) => res.render("index", { title: "Online Job Card Portal" }));
 
-// Placeholder until the store module is built.
-app.get("/store/login", (_req, res) => res.render("store/login", { title: "Store Login" }));
 
 app.use("/api", apiRouter);
 app.use("/technician", technicianRouter);
 app.use("/admin", adminRouter);
+app.use("/store", storeRouter);
 
 // Unknown addresses: API calls get a 404 JSON answer (a redirect would hand
 // scripts an HTML page they can't read); pages go back to the home page.
