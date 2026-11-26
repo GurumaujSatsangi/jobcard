@@ -150,7 +150,7 @@ router.get("/job-cards/:arn", async (req, res, next) => {
   try {
     const arn = req.params.arn.trim().toUpperCase();
     const { rows } = await query(
-      `SELECT jc.*, ta.name AS ta_name, ta.phone AS ta_phone
+      `SELECT jc.*, ta.name AS ta_name, ta.phone AS ta_phone, IF(ta.id IS NULL, jc.technician_amc_name, ta.amc_name) AS ta_amc
          FROM job_cards jc LEFT JOIN technician_accounts ta ON ta.id = jc.technician_id
         WHERE jc.arn = ?`,
       [arn],
@@ -170,7 +170,7 @@ router.get("/job-cards/:arn", async (req, res, next) => {
         title: "Technician Assigned",
         at: ts(jc.assigned_at),
         details: jc.assigned_at
-          ? { technician: jc.ta_name ?? jc.technician_name, phone: jc.ta_phone ?? jc.technician_phone }
+          ? { technician: jc.ta_name ?? jc.technician_name, phone: jc.ta_phone ?? jc.technician_phone, amcName: jc.ta_amc || null }
           : null,
       },
       {

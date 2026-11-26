@@ -138,3 +138,29 @@ ARNs look like `JC2026000001`. Only one open job card is allowed per AC.
 ## Bootstrap 6 notes
 
 Bootstrap 6 is still alpha and differs from v5: modals are native `<dialog class="dialog">` opened with `data-bs-toggle="dialog"`; radios use `class="radio"`; buttons are `btn btn-solid theme-primary`; responsive classes use `md:col-6`; the JS bundle is an ES module (`<script type="module">`).
+
+## Telegram job alerts for technicians
+
+When a job card (ARN) or preventive service is assigned, the technician gets a
+Telegram message from the portal's bot with the ARN, indentor, place and work.
+If a job is reassigned, the previous technician is told too.
+
+A bot can only message people who have started it, and Telegram doesn't let
+bots look people up by phone number. So each technician links themselves once:
+
+1. Create a bot with @BotFather and put its token in `.env`, then restart the app:
+   ```
+   TELEGRAM_BOT_TOKEN=<token from @BotFather>
+   ```
+2. The technician opens the bot on Telegram, taps **Start**, then
+   **Share my mobile number**.
+3. The admin adds the technician (Admin → Manage sections → Manage technicians)
+   with that mobile number. If the number hasn't been shared with the bot yet,
+   the account is not created and the admin can retry after 120 seconds.
+
+Technician accounts made before this (without a mobile number) still work but
+get no alerts until an admin adds their mobile number. A technician who shares
+their number after their account exists is linked automatically.
+
+The app reads the bot's messages by polling, so no webhook is needed. Don't set
+a webhook on this bot: polling stops working while one is set.

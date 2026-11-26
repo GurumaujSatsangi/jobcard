@@ -1,0 +1,45 @@
+<dialog class="dialog dialog-lg dialog-scrollable admin-dialog" id="memoDialog" aria-labelledby="memoTitle" data-api="<%= memoApi %>" data-login="<%= loginUrl %>">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="memoTitle">Memo record book</h2>
+    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+  </div>
+  <div class="dialog-body">
+    <div data-memo-view="list">
+      <div class="flash flash-ok" id="memoNote" role="status" hidden></div>
+      <div class="toolbar">
+        <input type="search" class="form-control" id="memoSearch" placeholder="Search memos" aria-label="Search memos" autocomplete="off">
+        <button type="button" class="btn btn-solid theme-primary" id="memoNewBtn"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add memo</button>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table memo-table">
+          <thead><tr><th>Memo date</th><th>Description</th></tr></thead>
+          <tbody id="memoRows"></tbody>
+        </table>
+      </div>
+      <div id="memoMsg"></div>
+    </div>
+
+    <div data-memo-view="new" hidden>
+      <button type="button" class="btn btn-subtle theme-secondary btn-sm mb-4" data-memo-back><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to list</button>
+      <form id="memoForm" novalidate>
+        <h3 class="h5 mb-4">Add memo</h3>
+        <div class="flash flash-err" data-form-error role="alert" hidden></div>
+        <div class="field">
+          <label class="form-label" for="memoDate">Memo Date <span class="req">*</span></label>
+          <input type="date" class="form-control" id="memoDate" name="memoDate" required style="max-width: 16rem">
+          <div class="invalid-feedback" data-for="memoDate"></div>
+        </div>
+        <div class="field">
+          <label class="form-label" for="memoDesc">Description <span class="req">*</span></label>
+          <textarea class="form-control" id="memoDesc" name="description" rows="6" maxlength="5000" required></textarea>
+          <div class="invalid-feedback" data-for="description"></div>
+        </div>
+        <div class="form-actions">
+          <span class="flex-grow-1"></span>
+          <button type="button" class="btn btn-subtle theme-secondary" data-memo-back>Cancel</button>
+          <button type="submit" class="btn btn-solid theme-primary">Save memo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</dialog>

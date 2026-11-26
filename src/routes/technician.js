@@ -156,7 +156,7 @@ router.get("/api/service-history", requireTechnician, async (req, res, next) => 
     if (!ac) return res.status(404).json({ error: `No AC found for ${crew}.` });
     const { rows } = await query(
       `SELECT jc.arn, jc.description, jc.status, jc.materials_issued, jc.created_at, jc.assigned_at, jc.closed_at,
-              COALESCE(t.name, jc.technician_name) AS tech_name, COALESCE(t.phone, jc.technician_phone) AS tech_phone
+              COALESCE(t.name, jc.technician_name) AS tech_name, COALESCE(t.phone, jc.technician_phone) AS tech_phone, IF(t.id IS NULL, jc.technician_amc_name, t.amc_name) AS tech_amc
          FROM job_cards jc LEFT JOIN technician_accounts t ON t.id = jc.technician_id
         WHERE jc.crew_serial_number = ?
         ORDER BY jc.created_at DESC
@@ -180,7 +180,7 @@ router.get("/api/service-history", requireTechnician, async (req, res, next) => 
         submittedOn: fmt(r.created_at),
         assignedOn: fmt(r.assigned_at),
         completedOn: fmt(r.closed_at),
-        technician: r.tech_name ? `${r.tech_name}${r.tech_phone ? ` (Ext. ${r.tech_phone})` : ""}` : null,
+        technician: r.tech_name ? `${r.tech_name}${r.tech_phone ? ` (Ext. ${r.tech_phone})` : ""}${r.tech_amc ? ` · AMC Staff, ${r.tech_amc}` : ""}` : null,
       })),
     });
   } catch (err) {

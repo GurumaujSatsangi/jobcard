@@ -1,5 +1,5 @@
-// Store: memo record book. List of all memos (newest memo date first) and a
-// form to add one (memo date + description).
+// Memo record book (store and admin dashboards). List of all memos (newest
+// memo date first) and a form to add one. The dialog says which API to use.
 const $ = (id) => document.getElementById(id);
 const esc = (v) =>
   String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -7,6 +7,8 @@ const day = (d) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-GB", { time
 const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }); // YYYY-MM-DD
 
 const dialog = $("memoDialog");
+const API = dialog.dataset.api;
+const LOGIN = dialog.dataset.login;
 let memos = [];
 
 async function api(url, { method = "GET", body } = {}) {
@@ -15,7 +17,7 @@ async function api(url, { method = "GET", body } = {}) {
     headers: { Accept: "application/json", ...(body ? { "Content-Type": "application/json" } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (res.status === 401) { location.href = "/store/login"; throw new Error("Signed out"); }
+  if (res.status === 401) { location.href = LOGIN; throw new Error("Signed out"); }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw Object.assign(new Error(data.error || "Something went wrong. Please try again."), { errors: data.errors });
   return data;
@@ -37,7 +39,7 @@ async function loadList() {
   $("memoMsg").innerHTML = '<div class="list-msg">Loading…</div>';
   $("memoRows").innerHTML = "";
   try {
-    memos = await api("/store/api/memos");
+    memos = await api(API);
     renderList();
   } catch (err) {
     $("memoMsg").innerHTML = `<div class="list-msg text-danger">${esc(err.message)}</div>`;
@@ -108,7 +110,7 @@ form.addEventListener("submit", async (e) => {
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-sm" aria-hidden="true"></span> Saving…';
   try {
-    const memo = await api("/store/api/memos", { method: "POST", body });
+    const memo = await api(API, { method: "POST", body });
     await loadList();
     show("list");
     note(`Memo dated ${day(memo.memoDate)} saved.`);

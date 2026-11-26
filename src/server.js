@@ -5,6 +5,7 @@ import fs from "node:fs";
 import cookieParser from "cookie-parser";
 import crypto from "node:crypto";
 import { initDb } from "./db.js";
+import { startTelegramPolling } from "./telegram.js";
 import apiRouter, { UPLOAD_DIR } from "./routes/api.js";
 import technicianRouter from "./routes/technician.js";
 import adminRouter from "./routes/admin.js";
@@ -74,3 +75,4 @@ app.use((err, req, res, _next) => {
 
 await initDb();
 app.listen(PORT, () => console.log(`Job Card Portal running at http://localhost:${PORT}`));
+startTelegramPolling();

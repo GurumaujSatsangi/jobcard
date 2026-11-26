@@ -240,6 +240,8 @@
     background: var(--accent-tint); color: var(--accent);
   }
   .pill-done { background: light-dark(#e6f4ea, #15301f); color: light-dark(#146c2e, #7ad19a); }
+  .pill-amc { background: light-dark(#fff3cd, #3a2f0b); color: light-dark(#7a5300, #ffd56b); vertical-align: middle; }
+  .pill-muted { background: var(--surface-alt); color: var(--text-muted); }
 
   .job-stepper {
     --bs-stepper-size: 1.75rem;
@@ -420,4 +422,18 @@
 @layer custom {
   .memo-text { white-space: pre-wrap; overflow-wrap: anywhere; }
   .memo-table td:first-child { width: 9rem; }
+}
+
+/* Admin: sections and technicians */
+@layer custom {
+  .flash-warn { background: light-dark(#fff8e1, #33290d); border-color: light-dark(#f1d68a, #6b5516); color: light-dark(#6b4a00, #ffd56b); }
+  .telegram-block { margin-bottom: 1.5rem; }
+  .telegram-block .flash { margin-bottom: .75rem; }
+  .section-grid { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
+  .section-tile { display: flex; flex-direction: column; gap: .5rem; padding: 1rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--surface-alt); }
+  .section-tile h4 { display: flex; gap: .5rem; align-items: flex-start; font-size: 15px; margin: 0; }
+  .section-tile .bi { color: var(--accent); }
+  .section-tile .btn { margin-top: auto; align-self: flex-start; }
+  .tech-table tr.is-inactive td:not(:last-child) { opacity: .6; }
+  .passcode { font-family: var(--bs-font-monospace, monospace); font-size: 1.25rem; font-weight: 700; letter-spacing: .2em; }
 }

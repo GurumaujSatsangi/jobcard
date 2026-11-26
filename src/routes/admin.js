@@ -16,6 +16,11 @@ import { serviceHistoryPdf } from "../service-history-pdf.js";
 import { verifyAdmin, startSession, endSession, getAdmin, requireAdmin } from "../auth/admin-auth.js";
 import { sameOriginOnly } from "../auth/session-auth.js";
 import { UPLOAD_DIR } from "./api.js";
+import crypto from "node:crypto";
+import { passcodeLookup, hashPasscode } from "../auth/technician-auth.js";
+import {
+  normalizeMobile, findTelegramUser, sendTechnicianAlert, jobAssignedText, jobRemovedText, serviceAssignedText,
+} from "../telegram.js";
 
 export const EXPORT_DIR = path.resolve("exports");
 fs.mkdirSync(EXPORT_DIR, { recursive: true });
@@ -91,11 +96,205 @@ router.get("/", (req, res) => {
 
 async function techniciansFor(section) {
   const { rows } = await query(
-    "SELECT id, name, phone FROM technician_accounts WHERE section = ? AND active = 1 ORDER BY name",
+    "SELECT id, name, phone, amc_name FROM technician_accounts WHERE section = ? AND active = 1 ORDER BY name",
     [section],
   );
-  return rows;
+  return rows.map((t) => ({ id: t.id, name: t.name, phone: t.phone || null, amcName: t.amc_name }));
 }
+
+const techJson = (t) => ({
+  id: t.id,
+  name: t.name,
+  section: t.section,
+  staffType: t.staff_type,
+  amcName: t.amc_name,
+  mobile: t.mobile,
+  extension: t.phone || null,
+  telegramLinked: Boolean(t.telegram_user_id),
+  active: Boolean(t.active),
+  createdAt: fmt(t.created_at),
+});
+
+async function uniquePasscode() {
+  for (let i = 0; i < 50; i++) {
+    const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
+    const { rowCount } = await query("SELECT 1 FROM technician_accounts WHERE passcode_lookup = ?", [passcodeLookup(code)]);
+    if (!rowCount) return code;
+  }
+  throw new Error("Could not generate a unique passcode.");
+}
+
+// Validate the technician form. Section comes from the URL/body on create only.
+function readTechnician(body) {
+  const b = body ?? {};
+  const data = {
+    name: text(b.name, 256),
+    staffType: b.staffType === "AMC" ? "AMC" : b.staffType === "IACS" ? "IACS" : "",
+    amcName: text(b.amcName, 121),
+    mobile: normalizeMobile(b.mobile),
+    extension: text(b.extension, 17),
+  };
+  const errors = {};
+  if (!data.name) errors.name = "Name of the technician is required.";
+  else if (data.name.length > 255) errors.name = "Keep the name under 255 characters.";
+  if (!data.staffType) errors.staffType = "Choose IACS Staff or AMC Staff.";
+  if (data.staffType === "AMC" && !data.amcName) errors.amcName = "Enter the name of the AMC.";
+  else if (data.amcName.length > 120) errors.amcName = "Keep the AMC name under 120 characters.";
+  if (!text(b.mobile, 20)) errors.mobile = "Mobile number is required.";
+  else if (!data.mobile) errors.mobile = "Enter a valid 10-digit mobile number.";
+  if (data.extension && !/^[0-9][0-9 /,-]{0,15}$/.test(data.extension)) errors.extension = "Enter the extension as digits, e.g. 2239.";
+  if (data.staffType !== "AMC") data.amcName = "";
+  if (Object.keys(errors).length) throw Object.assign(httpError(400, Object.values(errors)[0]), { errors });
+  return data;
+}
+
+async function ensureMobileFree(mobile, exceptId = 0) {
+  const { rows: [other] } = await query(
+    "SELECT id, name, section FROM technician_accounts WHERE mobile = ? AND id <> ?",
+    [mobile, exceptId],
+  );
+  if (other) {
+    throw Object.assign(httpError(409, `Mobile number ${mobile} already belongs to ${other.name} (${sectionLabel(other.section)}).`),
+      { errors: { mobile: "This mobile number is already used by another technician." } });
+  }
+}
+
+// The account is only created/updated once the technician has shared their
+// mobile number with the Telegram bot, so job alerts can reach them.
+async function requireTelegram(mobile) {
+  const check = await findTelegramUser(mobile);
+  if (!check.ok) {
+    throw Object.assign(httpError(409, check.message), { extra: { telegram: check.reason, retryAfter: 120 } });
+  }
+  return check.telegramUserId;
+}
+
+// The five sections with how many technicians each has.
+router.get("/api/sections", asyncRoute(async (_req, res) => {
+  const { rows } = await query(
+    `SELECT section, SUM(active = 1) AS active, SUM(active = 1 AND staff_type = 'AMC') AS amc
+       FROM technician_accounts GROUP BY section`,
+  );
+  const by = new Map(rows.map((r) => [r.section, r]));
+  res.json(SECTIONS.map((s) => ({
+    value: s.value, label: s.label, icon: s.icon, extension: s.extension,
+    technicians: Number(by.get(s.value)?.active ?? 0), amcTechnicians: Number(by.get(s.value)?.amc ?? 0),
+  })));
+}));
+
+router.get("/api/sections/:section/technicians", asyncRoute(async (req, res) => {
+  if (!SECTIONS.some((s) => s.value === req.params.section)) throw httpError(404, "Unknown section.");
+  const { rows } = await query(
+    "SELECT * FROM technician_accounts WHERE section = ? ORDER BY active DESC, name",
+    [req.params.section],
+  );
+  res.json(rows.map(techJson));
+}));
+
+router.post("/api/technicians", asyncRoute(async (req, res) => {
+  const section = text(req.body?.section, 32);
+  if (!SECTIONS.some((s) => s.value === section)) throw httpError(400, "Unknown section.");
+  const t = readTechnician(req.body);
+  await ensureMobileFree(t.mobile);
+  const telegramUserId = await requireTelegram(t.mobile);
+  const code = await uniquePasscode();
+  const { insertId } = await query(
+    `INSERT INTO technician_accounts
+       (name, staff_type, amc_name, mobile, telegram_user_id, phone, section, passcode_lookup, passcode_hash)
+     VALUES (?,?,?,?,?,?,?,?,?)`,
+    [t.name, t.staffType, t.amcName || null, t.mobile, telegramUserId, t.extension, section,
+      passcodeLookup(code), await hashPasscode(code)],
+  );
+  const { rows: [row] } = await query("SELECT * FROM technician_accounts WHERE id = ?", [insertId]);
+  res.status(201).json({ technician: techJson(row), passcode: code });
+}));
+
+async function findTechnician(id) {
+  const { rows: [t] } = await query("SELECT * FROM technician_accounts WHERE id = ?", [Number(id) || 0]);
+  if (!t) throw httpError(404, "That technician doesn't exist.");
+  return t;
+}
+
+router.put("/api/technicians/:id", asyncRoute(async (req, res) => {
+  const current = await findTechnician(req.params.id);
+  const t = readTechnician(req.body);
+  await ensureMobileFree(t.mobile, current.id);
+  // Check Telegram again when the number changes (or was never checked).
+  const telegramUserId = t.mobile !== current.mobile || !current.telegram_user_id
+    ? await requireTelegram(t.mobile)
+    : current.telegram_user_id;
+  await query(
+    `UPDATE technician_accounts
+        SET name = ?, staff_type = ?, amc_name = ?, mobile = ?, telegram_user_id = ?, phone = ?
+      WHERE id = ?`,
+    [t.name, t.staffType, t.amcName || null, t.mobile, telegramUserId, t.extension, current.id],
+  );
+  res.json({ technician: techJson(await findTechnician(current.id)) });
+}));
+
+router.post("/api/technicians/:id/reset-passcode", asyncRoute(async (req, res) => {
+  const t = await findTechnician(req.params.id);
+  const code = await uniquePasscode();
+  await query("UPDATE technician_accounts SET passcode_lookup = ?, passcode_hash = ? WHERE id = ?",
+    [passcodeLookup(code), await hashPasscode(code), t.id]);
+  await revokeAllTechnician(t.id);
+  res.json({ passcode: code });
+}));
+
+router.post("/api/technicians/:id/reactivate", asyncRoute(async (req, res) => {
+  const t = await findTechnician(req.params.id);
+  await query("UPDATE technician_accounts SET active = 1 WHERE id = ?", [t.id]);
+  res.json({ technician: techJson(await findTechnician(t.id)) });
+}));
+
+// Delete: removed for good if they never had work; otherwise deactivated so
+// old job cards keep their technician.
+router.delete("/api/technicians/:id", asyncRoute(async (req, res) => {
+  const t = await findTechnician(req.params.id);
+  const { rows: [use] } = await query(
+    `SELECT (SELECT COUNT(*) FROM job_cards WHERE technician_id = ?) AS jobs,
+            (SELECT COUNT(*) FROM preventive_services WHERE technician_id = ?) AS services`,
+    [t.id, t.id],
+  );
+  await revokeAllTechnician(t.id);
+  if (Number(use.jobs) || Number(use.services)) {
+    await query("UPDATE technician_accounts SET active = 0 WHERE id = ?", [t.id]);
+    return res.json({ deleted: false, deactivated: true,
+      message: `${t.name} has ${use.jobs} job card(s) and ${use.services} preventive service(s), so the account was deactivated instead of deleted. They can no longer sign in.` });
+  }
+  await query("DELETE FROM technician_sessions WHERE technician_id = ?", [t.id]);
+  await query("DELETE FROM technician_accounts WHERE id = ?", [t.id]);
+  res.json({ deleted: true, message: `${t.name} was deleted.` });
+}));
+
+const revokeAllTechnician = (id) =>
+  query("UPDATE technician_sessions SET revoked_at = UTC_TIMESTAMP(3) WHERE technician_id = ? AND revoked_at IS NULL", [id]);
+
+// ---------- memo record book (shared with the store) ----------
+
+router.get("/api/memos", asyncRoute(async (_req, res) => {
+  const { rows } = await query("SELECT * FROM store_memos ORDER BY memo_date DESC, id DESC");
+  res.json(rows.map((m) => ({ id: m.id, memoDate: m.memo_date, description: m.description, addedBy: m.added_by_name, addedAt: fmt(m.created_at) })));
+}));
+
+router.post("/api/memos", asyncRoute(async (req, res) => {
+  const date = text(req.body?.memoDate, 11);
+  const description = text(req.body?.description, 5001);
+  const errors = {};
+  const valid = /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(`${date}T00:00:00Z`))
+    && new Date(`${date}T00:00:00Z`).toISOString().startsWith(date);
+  if (!date) errors.memoDate = "Memo date is required.";
+  else if (!valid) errors.memoDate = "Enter a valid date.";
+  if (!description) errors.description = "Description is required.";
+  else if (description.length > 5000) errors.description = "Keep the description under 5000 characters.";
+  if (Object.keys(errors).length) throw Object.assign(httpError(400, Object.values(errors)[0]), { errors });
+  const { insertId } = await query(
+    "INSERT INTO store_memos (memo_date, description, added_by_store_id, added_by_name) VALUES (?,?,NULL,?)",
+    [date, description, `${req.admin.name} (Admin)`],
+  );
+  const { rows: [m] } = await query("SELECT * FROM store_memos WHERE id = ?", [insertId]);
+  res.status(201).json({ id: m.id, memoDate: m.memo_date, description: m.description, addedBy: m.added_by_name, addedAt: fmt(m.created_at) });
+}));
 
 // ---------- job cards ----------
 
@@ -144,7 +343,7 @@ router.get("/api/job-cards", asyncRoute(async (req, res) => {
 // Printable job card (with the Materials Issued Sheet), once a technician is assigned.
 router.get("/api/job-cards/:arn/jobcard.pdf", asyncRoute(async (req, res) => {
   const { rows: [jc] } = await query(
-    `SELECT jc.*, COALESCE(t.name, jc.technician_name) AS tech_name, COALESCE(t.phone, jc.technician_phone) AS tech_phone,
+    `SELECT jc.*, COALESCE(t.name, jc.technician_name) AS tech_name, COALESCE(t.phone, jc.technician_phone) AS tech_phone, IF(t.id IS NULL, jc.technician_amc_name, t.amc_name) AS tech_amc,
             a.in_charge AS ac_in_charge, a.room_number AS ac_room_number, a.brand AS ac_brand, a.amc AS ac_amc,
             a.amc_work_order_no AS ac_amc_work_order_no, a.amc_start_date AS ac_amc_start_date, a.amc_end_date AS ac_amc_end_date
        FROM job_cards jc
@@ -161,7 +360,7 @@ router.get("/api/job-cards/:arn/jobcard.pdf", asyncRoute(async (req, res) => {
 
 router.get("/api/job-cards/:arn", asyncRoute(async (req, res) => {
   const { rows } = await query(
-    `SELECT jc.*, COALESCE(t.name, jc.technician_name) AS tech_name, COALESCE(t.phone, jc.technician_phone) AS tech_phone
+    `SELECT jc.*, COALESCE(t.name, jc.technician_name) AS tech_name, COALESCE(t.phone, jc.technician_phone) AS tech_phone, IF(t.id IS NULL, jc.technician_amc_name, t.amc_name) AS tech_amc
        FROM job_cards jc LEFT JOIN technician_accounts t ON t.id = jc.technician_id
       WHERE jc.arn = ?`,
     [String(req.params.arn).toUpperCase()],
@@ -190,6 +389,7 @@ router.get("/api/job-cards/:arn", asyncRoute(async (req, res) => {
     technicianId: jc.technician_id,
     technician: jc.tech_name,
     technicianPhone: jc.tech_phone,
+    technicianAmc: jc.tech_amc,
     assignedAt: fmt(jc.assigned_at),
     materials: jc.materials_issued,
     materialIssuedAt: fmt(jc.material_issued_at),
@@ -210,12 +410,18 @@ router.post("/api/job-cards/:arn/assign", asyncRoute(async (req, res) => {
   const technicianId = Number(req.body?.technicianId);
   if (!Number.isInteger(technicianId) || technicianId < 1) throw httpError(400, "Choose a technician.");
 
-  const result = await withTransaction(async (tx) => {
-    const { rows: [jc] } = await tx.query("SELECT id, section, status FROM job_cards WHERE arn = ? FOR UPDATE", [arn]);
+  const { result, jc, tech, previous } = await withTransaction(async (tx) => {
+    const { rows: [jc] } = await tx.query(
+      `SELECT jc.id, jc.arn, jc.section, jc.status, jc.technician_id, jc.first_name, jc.last_name, jc.contact_number,
+              jc.department, jc.crew_serial_number, jc.description, a.room_number
+         FROM job_cards jc LEFT JOIN ac_units a ON a.crew_serial_number = jc.crew_serial_number
+        WHERE jc.arn = ? FOR UPDATE`,
+      [arn],
+    );
     if (!jc) throw httpError(404, "Job card not found.");
     if (jc.status === STATUS.CLOSED) throw httpError(409, "This job card is already closed.");
     const { rows: [tech] } = await tx.query(
-      "SELECT id, name, phone, section FROM technician_accounts WHERE id = ? AND active = 1",
+      "SELECT id, name, phone, amc_name, section, telegram_user_id FROM technician_accounts WHERE id = ? AND active = 1",
       [technicianId],
     );
     if (!tech) throw httpError(400, "That technician is not available.");
@@ -226,14 +432,31 @@ router.post("/api/job-cards/:arn/assign", asyncRoute(async (req, res) => {
     const nextStatus = jc.status === STATUS.SUBMITTED ? STATUS.TECHNICIAN_ASSIGNED : jc.status;
     await tx.query(
       `UPDATE job_cards
-          SET technician_id = ?, technician_name = ?, technician_phone = ?, assigned_at = UTC_TIMESTAMP(3),
+          SET technician_id = ?, technician_name = ?, technician_phone = ?, technician_amc_name = ?, assigned_at = UTC_TIMESTAMP(3),
               status = ?, updated_at = UTC_TIMESTAMP(3)
         WHERE id = ?`,
-      [tech.id, tech.name, tech.phone, nextStatus, jc.id],
+      [tech.id, tech.name, tech.phone, tech.amc_name, nextStatus, jc.id],
     );
-    return { status: nextStatus, technician: tech.name };
+    const { rows: [previous] } = jc.technician_id && jc.technician_id !== tech.id
+      ? await tx.query("SELECT telegram_user_id FROM technician_accounts WHERE id = ?", [jc.technician_id])
+      : { rows: [] };
+    return { result: { status: nextStatus, technician: tech.name }, jc, tech, previous };
   });
-  res.json(result);
+
+  // Telegram alerts (after the change is saved; a failed message doesn't undo it).
+  const sameTech = jc.technician_id === tech.id;
+  const telegramAlert = await sendTechnicianAlert(tech.telegram_user_id, jobAssignedText({
+    arn: jc.arn,
+    sectionLabel: sectionLabel(jc.section),
+    indentor: `${jc.first_name} ${jc.last_name}`,
+    contact: jc.contact_number,
+    department: jc.department,
+    crewSerialNumber: jc.section === "AC_REFRIGERATION" ? jc.crew_serial_number : null,
+    roomNumber: jc.section === "AC_REFRIGERATION" ? jc.room_number : null,
+    description: jc.description,
+  }, { reassigned: Boolean(jc.technician_id) && !sameTech }));
+  if (previous?.telegram_user_id) await sendTechnicianAlert(previous.telegram_user_id, jobRemovedText(jc.arn));
+  res.json({ ...result, telegramAlert });
 }));
 
 // ---------- protected files ----------
@@ -511,12 +734,12 @@ router.post("/api/preventive/services", asyncRoute(async (req, res) => {
   if (Object.keys(errors).length) throw Object.assign(httpError(400, "Please complete the form."), { errors });
 
   const admin = req.admin;
-  const ref = await withTransaction(async (tx) => {
-    const { rows: [ac] } = await tx.query("SELECT crew_serial_number, amc FROM ac_units WHERE crew_serial_number = ? FOR UPDATE", [crew]);
+  const { ref, ac, tech } = await withTransaction(async (tx) => {
+    const { rows: [ac] } = await tx.query("SELECT crew_serial_number, amc, room_number, school FROM ac_units WHERE crew_serial_number = ? FOR UPDATE", [crew]);
     if (!ac) throw httpError(404, "AC not found.");
     if (ac.amc !== "Yes") throw httpError(400, "This AC is not under AMC.");
     const { rows: [tech] } = await tx.query(
-      "SELECT id, name, phone, section FROM technician_accounts WHERE id = ? AND active = 1", [technicianId],
+      "SELECT id, name, phone, amc_name, section, telegram_user_id FROM technician_accounts WHERE id = ? AND active = 1", [technicianId],
     );
     if (!tech || tech.section !== "AC_REFRIGERATION") {
       throw Object.assign(httpError(400, "Choose an AC & Refrigeration technician."), { errors: { technicianId: "Choose an AC & Refrigeration technician." } });
@@ -537,9 +760,13 @@ router.post("/api/preventive/services", asyncRoute(async (req, res) => {
       [newRef, crew, serviceType, PS_STATUS.ASSIGNED, admin.id, admin.name, admin.email,
        admin.contact_number, admin.department, tech.id, tech.name, tech.phone],
     );
-    return newRef;
+    return { ref: newRef, ac, tech };
   });
-  res.status(201).json({ ref });
+  const telegramAlert = await sendTechnicianAlert(tech.telegram_user_id, serviceAssignedText({
+    ref, serviceType: `Preventive Service ${serviceType}`, crewSerialNumber: ac.crew_serial_number,
+    roomNumber: ac.room_number, school: ac.school, requestedBy: admin.name,
+  }));
+  res.status(201).json({ ref, telegramAlert });
 }));
 
 router.get("/api/preventive/services", asyncRoute(async (req, res) => {
@@ -662,7 +889,7 @@ router.post("/api/preventive/reset", asyncRoute(async (req, res) => {
 // JSON errors for the admin API.
 router.use((err, req, res, next) => {
   if (!req.path.startsWith("/api/") && !req.path.startsWith("/files/")) return next(err);
-  if (err.expose) return res.status(err.status).json({ error: err.message, errors: err.errors });
+  if (err.expose) return res.status(err.status).json({ error: err.message, errors: err.errors, ...err.extra });
   console.error(err);
   res.status(500).json({ error: "Something went wrong. Please try again." });
 });

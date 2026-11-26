@@ -73,7 +73,8 @@ function renderJob(note) {
     j.crewSerialNumber && ["CREW Serial Number", `<span class="font-monospace">${esc(j.crewSerialNumber)}</span>`],
     ["Room No.", dash(j.roomNumber)],
     ["School / Department", dash(j.department)],
-    ["Assigned technician", dash(j.technician)],
+    ["Assigned technician", `${dash(j.technician)}${j.technicianAmc ? ' <span class="pill pill-amc">AMC Staff</span>' : ""}`],
+    j.technicianAmc && ["AMC", esc(j.technicianAmc)],
     ["Issue", dash(j.description)],
   ].filter(Boolean).map(([k, v]) => `<tr><th scope="row">${esc(k)}</th><td>${v}</td></tr>`).join("");
 

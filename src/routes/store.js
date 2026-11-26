@@ -77,7 +77,7 @@ async function loadJobCard(q, arn, { lock = false } = {}) {
   const { rows: [jc] } = await q(
     `SELECT jc.id, jc.arn, jc.first_name, jc.last_name, jc.department, jc.section, jc.status,
             jc.crew_serial_number, jc.description, jc.assigned_at,
-            COALESCE(t.name, jc.technician_name) AS tech_name, COALESCE(t.phone, jc.technician_phone) AS tech_phone,
+            COALESCE(t.name, jc.technician_name) AS tech_name, COALESCE(t.phone, jc.technician_phone) AS tech_phone, IF(t.id IS NULL, jc.technician_amc_name, t.amc_name) AS tech_amc,
             a.room_number, a.in_charge
        FROM job_cards jc
        LEFT JOIN technician_accounts t ON t.id = jc.technician_id
@@ -129,6 +129,7 @@ router.get("/api/job-cards/:arn", asyncRoute(async (req, res) => {
     roomNumber: jc.room_number,
     inCharge: jc.in_charge,
     technician: jc.tech_name ? `${jc.tech_name}${jc.tech_phone ? ` (Ext. ${jc.tech_phone})` : ""}` : null,
+    technicianAmc: jc.tech_amc || null,
     description: jc.description,
     slips: await loadSlips(query, jc.id),
   });

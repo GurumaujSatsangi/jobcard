@@ -378,6 +378,16 @@ const SCHEMA = [
        REFERENCES store_accounts (id) ON DELETE SET NULL
    ) ${TABLE_OPTS}`,
 
+  // Mobile numbers people shared with the Telegram bot (one row per number),
+  // used to check that a new technician is in the technicians' group.
+  `CREATE TABLE IF NOT EXISTS telegram_contacts (
+     mobile            VARCHAR(10)  NOT NULL PRIMARY KEY,
+     telegram_user_id  BIGINT       NOT NULL,
+     first_name        VARCHAR(255),
+     username          VARCHAR(64),
+     updated_at        DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+   ) ${TABLE_OPTS}`,
+
   // Store memo record book: a date and a description per memo.
   `CREATE TABLE IF NOT EXISTS store_memos (
      id                INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -417,6 +427,22 @@ export async function initDb() {
   }
 
   for (const statement of SCHEMA) await query(statement);
+
+  // Technicians: IACS or AMC staff (with the AMC's name), mobile number and
+  // Telegram link. `phone` keeps holding the (now optional) extension.
+  if (!(await columnExists("technician_accounts", "staff_type"))) {
+    await query(
+      `ALTER TABLE technician_accounts
+         ADD COLUMN staff_type VARCHAR(8) NOT NULL DEFAULT 'IACS' AFTER name,
+         ADD COLUMN amc_name VARCHAR(120) NULL AFTER staff_type,
+         ADD COLUMN mobile VARCHAR(10) NULL AFTER amc_name,
+         ADD COLUMN telegram_user_id BIGINT NULL AFTER mobile`,
+    );
+  }
+  // Job cards keep the AMC name of the technician as it was when assigned.
+  if (!(await columnExists("job_cards", "technician_amc_name"))) {
+    await query("ALTER TABLE job_cards ADD COLUMN technician_amc_name VARCHAR(120) NULL AFTER technician_phone");
+  }
 
   // inventory_items got a make/brand column after it was first created.
   if (!(await columnExists("inventory_items", "make"))) {

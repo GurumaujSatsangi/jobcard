@@ -132,6 +132,18 @@ const receiptButton = (url, size) => url
   ? `<a class="btn btn-subtle theme-secondary ${size}" href="${esc(url)}" target="_blank" rel="noopener" title="Download the job card PDF"><i class="bi bi-file-earmark-arrow-down" aria-hidden="true"></i> Receipt</a>`
   : `<button type="button" class="btn btn-subtle theme-secondary ${size}" disabled title="Available after a technician is assigned"><i class="bi bi-file-earmark-arrow-down" aria-hidden="true"></i> Receipt</button>`;
 
+// "Name — AMC Staff (Company) (Ext. 123)" for technician pickers.
+const techLabel = (t) =>
+  esc(`${t.name}${t.amcName ? ` — AMC Staff (${t.amcName})` : ""}${t.phone ? ` (Ext. ${t.phone})` : ""}`);
+
+// What happened to the Telegram message sent on assignment.
+const alertNote = (status, asHtml = true) => {
+  const t = status === "sent" ? "Telegram alert sent."
+    : status === "failed" ? "The Telegram alert could not be sent (they may have blocked the bot)."
+    : "No Telegram alert: this technician hasn't linked Telegram yet.";
+  return asHtml ? esc(t) : t;
+};
+
 const statusPill = (s) =>
   `<span class="pill ${/CLOSED/.test(s) ? "pill-done" : ""}">${esc(s)}</span>`;
 
@@ -184,7 +196,7 @@ const statusPill = (s) =>
       j.detailsCorrect === false && ["AC details", "Indentor said the AC details were <strong>not</strong> correct"],
       ["Description", esc(j.description)],
       ["Submitted", dash(j.submittedOn)],
-      ["Technician", j.technician ? `${esc(j.technician)} · Ext. ${esc(j.technicianPhone)}<div class="small text-muted-2">Assigned ${dash(j.assignedAt)}</div>` : "Not assigned yet"],
+      ["Technician", j.technician ? `${esc(j.technician)}${j.technicianPhone ? ` · Ext. ${esc(j.technicianPhone)}` : ""}${j.technicianAmc ? ` <span class="pill pill-amc">AMC Staff</span><div>AMC: ${esc(j.technicianAmc)}</div>` : ""}<div class="small text-muted-2">Assigned ${dash(j.assignedAt)}</div>` : "Not assigned yet"],
       j.materials && ["Materials issued", `${esc(j.materials)}<div class="small text-muted-2">${dash(j.materialIssuedAt)}</div>`],
       j.closedAt && ["Closed", dash(j.closedAt)],
       ["Files", j.files.length
@@ -193,7 +205,7 @@ const statusPill = (s) =>
     ].filter(Boolean);
 
     const options = j.technicians.map((t) =>
-      `<option value="${t.id}" ${t.id === j.technicianId ? "selected" : ""}>${esc(t.name)} (Ext. ${esc(t.phone)})</option>`).join("");
+      `<option value="${t.id}" ${t.id === j.technicianId ? "selected" : ""}>${techLabel(t)}</option>`).join("");
 
     detail.innerHTML = `
       <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
@@ -226,10 +238,10 @@ const statusPill = (s) =>
       if (!technicianId) return showFormError(form, { message: "Choose a technician." });
       setBusy(btn, true, "Assigning…");
       try {
-        await api(`/admin/api/job-cards/${encodeURIComponent(j.arn)}/assign`, { method: "POST", body: { technicianId } });
+        const { telegramAlert } = await api(`/admin/api/job-cards/${encodeURIComponent(j.arn)}/assign`, { method: "POST", body: { technicianId } });
         await openJob(j.arn);
         const ok = $("[data-ok]", detail);
-        if (ok) { ok.innerHTML = '<i class="bi bi-check-circle"></i><span>Technician assigned. It now shows on their My Jobs page.</span>'; ok.hidden = false; }
+        if (ok) { ok.innerHTML = `<i class="bi bi-check-circle"></i><span>Technician assigned. It now shows on their My Jobs page. ${alertNote(telegramAlert)}</span>`; ok.hidden = false; }
         list.reload();
       } catch (err) {
         setBusy(btn, false);
@@ -571,7 +583,7 @@ const statusPill = (s) =>
     try {
       const techs = await api("/admin/api/technicians?section=AC_REFRIGERATION");
       techSelect.innerHTML = techs.length
-        ? `<option value="">Choose a technician…</option>${techs.map((t) => `<option value="${t.id}">${esc(t.name)} (Ext. ${esc(t.phone)})</option>`).join("")}`
+        ? `<option value="">Choose a technician…</option>${techs.map((t) => `<option value="${t.id}">${techLabel(t)}</option>`).join("")}`
         : '<option value="">No active AC technicians</option>';
     } catch (err) {
       showFormError(form, err);
@@ -594,12 +606,12 @@ const statusPill = (s) =>
     const btn = $("[data-save]", form);
     setBusy(btn, true, "Applying…");
     try {
-      const { ref } = await api("/admin/api/preventive/services", { method: "POST", body });
+      const { ref, telegramAlert } = await api("/admin/api/preventive/services", { method: "POST", body });
       setBusy(btn, false);
       showView(dialog, "list");
       list.reload();
       refreshReset();
-      flashList(`Preventive service ${ref} raised and sent to the technician.`);
+      flashList(`Preventive service ${ref} raised and sent to the technician. ${alertNote(telegramAlert, false)}`);
     } catch (err) {
       setBusy(btn, false);
       showFormError(form, err);

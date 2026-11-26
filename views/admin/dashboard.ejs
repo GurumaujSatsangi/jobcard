@@ -30,6 +30,20 @@
           <button type="button" class="btn btn-solid theme-primary" data-bs-toggle="dialog" data-bs-target="#psDialog">Open</button>
         </section>
       </div>
+      <div class="col-12 md:col-4">
+        <section class="panel panel-body action-card">
+          <h2><i class="bi bi-diagram-3" aria-hidden="true"></i> Manage sections</h2>
+          <p>The five workshop sections and their technicians. Add, edit or remove IACS and AMC technicians.</p>
+          <button type="button" class="btn btn-solid theme-primary" data-bs-toggle="dialog" data-bs-target="#sectionsDialog">Open</button>
+        </section>
+      </div>
+      <div class="col-12 md:col-4">
+        <section class="panel panel-body action-card">
+          <h2><i class="bi bi-journal-text" aria-hidden="true"></i> Memo record book</h2>
+          <p>See all memos recorded by the store and add a new one.</p>
+          <button type="button" class="btn btn-solid theme-primary" data-bs-toggle="dialog" data-bs-target="#memoDialog">Open</button>
+        </section>
+      </div>
     </div>
   </div>
 </main>
@@ -230,4 +244,96 @@
   preventiveTypes,
 }).replace(/</g, "\\u003c") %></script>
 
-<%- include("../partials/footer", { scripts: ["/js/admin.js"] }) %>
+<!-- ============ Sections & technicians ============ -->
+<dialog class="dialog dialog-xl dialog-scrollable admin-dialog" id="sectionsDialog" aria-labelledby="sectionsTitle">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="sectionsTitle">Manage sections</h2>
+    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+  </div>
+  <div class="dialog-body">
+    <!-- The five sections -->
+    <div data-view="sections">
+      <div class="section-grid" id="sectionGrid"></div>
+    </div>
+
+    <!-- Technicians of one section -->
+    <div data-view="techs" hidden>
+      <button type="button" class="btn btn-subtle theme-secondary btn-sm mb-4" data-go="sections"><i class="bi bi-arrow-left" aria-hidden="true"></i> All sections</button>
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <h3 class="h5 m-0" id="techSectionTitle"></h3>
+        <button type="button" class="btn btn-solid theme-primary" id="techAddBtn"><i class="bi bi-person-plus" aria-hidden="true"></i> Add technician</button>
+      </div>
+      <div id="techNote"></div>
+      <div class="table-responsive">
+        <table class="data-table tech-table">
+          <thead><tr><th>Technician</th><th>Mobile</th><th>Ext.</th><th><span class="visually-hidden">Actions</span></th></tr></thead>
+          <tbody id="techRows"></tbody>
+        </table>
+      </div>
+      <div id="techMsg"></div>
+    </div>
+
+    <!-- Add / edit a technician -->
+    <div data-view="techForm" hidden>
+      <button type="button" class="btn btn-subtle theme-secondary btn-sm mb-4" data-go="techs"><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to technicians</button>
+      <form id="techForm" novalidate>
+        <h3 class="h5 mb-1" id="techFormTitle"></h3>
+        <p class="text-muted-2 small mb-5" id="techFormSub"></p>
+        <div class="flash flash-err" data-form-error role="alert" hidden></div>
+        <div class="telegram-block" id="telegramBlock" hidden>
+          <div class="flash flash-warn" role="alert">
+            <i class="bi bi-telegram" aria-hidden="true"></i>
+            <div>
+              <strong>Ask the technician to share their mobile number with the Telegram bot first.</strong>
+              <div id="telegramMsg"></div>
+            </div>
+          </div>
+          <button type="button" class="btn btn-outline theme-primary" id="telegramRetry" disabled>Retry</button>
+          <span class="small text-muted-2 ms-2" id="telegramCountdown"></span>
+        </div>
+
+        <div class="field">
+          <label class="form-label" for="tName">Name of the Technician <span class="req">*</span></label>
+          <input type="text" class="form-control" id="tName" name="name" maxlength="255" autocomplete="off" required>
+          <div class="invalid-feedback" data-for="name"></div>
+        </div>
+        <div class="field" role="radiogroup" aria-labelledby="tTypeLabel" aria-required="true">
+          <span class="field-label" id="tTypeLabel">Staff type <span class="req">*</span></span>
+          <div class="choice-list two-col">
+            <label class="choice" for="tTypeIacs"><input class="radio" type="radio" name="staffType" id="tTypeIacs" value="IACS" required> <span>IACS Staff</span></label>
+            <label class="choice" for="tTypeAmc"><input class="radio" type="radio" name="staffType" id="tTypeAmc" value="AMC"> <span>AMC Staff</span></label>
+          </div>
+          <div class="invalid-feedback" data-for="staffType"></div>
+        </div>
+        <div class="field" id="amcField" hidden>
+          <label class="form-label" for="tAmc">Name of the AMC <span class="req">*</span></label>
+          <input type="text" class="form-control" id="tAmc" name="amcName" maxlength="120" autocomplete="off">
+          <div class="invalid-feedback" data-for="amcName"></div>
+        </div>
+        <div class="row g-4">
+          <div class="col-12 md:col-6 field">
+            <label class="form-label" for="tMobile">Mobile Number <span class="req">*</span></label>
+            <input type="tel" class="form-control" id="tMobile" name="mobile" inputmode="numeric" maxlength="15" placeholder="10-digit mobile number" autocomplete="off" required>
+            <div class="form-text">Must be the number the technician uses on Telegram.</div>
+            <div class="invalid-feedback" data-for="mobile"></div>
+          </div>
+          <div class="col-12 md:col-6 field">
+            <label class="form-label" for="tExt">Extension Number <span class="form-text">(optional)</span></label>
+            <input type="text" class="form-control" id="tExt" name="extension" inputmode="numeric" maxlength="16" autocomplete="off">
+            <div class="invalid-feedback" data-for="extension"></div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <span class="flex-grow-1"></span>
+          <button type="button" class="btn btn-subtle theme-secondary" data-go="techs">Cancel</button>
+          <button type="submit" class="btn btn-solid theme-primary" id="techSubmit">Submit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</dialog>
+
+<!-- ============ Memo record book ============ -->
+<%- include("../partials/memo-dialog", { memoApi: "/admin/api/memos", loginUrl: "/admin/login" }) %>
+
+<%- include("../partials/footer", { scripts: ["/js/admin.js", "/js/admin-sections.js", "/js/memos.js"] }) %>

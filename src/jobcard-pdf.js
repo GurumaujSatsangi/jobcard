@@ -80,7 +80,23 @@ export function jobCardPdf(jc) {
   rule(y);
   y += 11;
   row("Assigned Date", fmtLong(jc.assigned_at));
-  row("Technician", jc.tech_name ? `${jc.tech_name}${jc.tech_phone ? ` (Ext. ${jc.tech_phone})` : ""}` : "");
+  const techText = jc.tech_name ? `${jc.tech_name}${jc.tech_phone ? ` (Ext. ${jc.tech_phone})` : ""}` : "";
+  const techY = y;
+  row("Technician", techText);
+  if (jc.tech_name && jc.tech_amc) {
+    // Black "AMC STAFF" badge right after the technician's name.
+    doc.font("Helvetica").fontSize(9.5);
+    const nameW = doc.widthOfString(techText);
+    doc.font("Helvetica-Bold").fontSize(7.5);
+    const badgeW = doc.widthOfString("AMC STAFF") + 10;
+    if (nameW + 8 + badgeW <= valueW) {
+      const bx = valueX + nameW + 8;
+      doc.roundedRect(bx, techY - 1.5, badgeW, 12.5, 3).fill(INK);
+      doc.fillColor("#ffffff").text("AMC STAFF", bx + 5, techY + 1.2, { lineBreak: false });
+      doc.fillColor(INK);
+    }
+    row("AMC (Technician's Employer)", `${jc.tech_amc} (AMC Staff)`, { bold: true });
+  }
   y += 1;
   rule(y);
 

@@ -46,8 +46,9 @@ import { openQrScanner } from "/js/qr-scan.js";
     if (!d) return "";
     if (step.key === "assigned") {
       return `<div class="step-details">
-        <div><span class="label">Technician:</span> ${esc(d.technician) || "—"}</div>
-        <div><span class="label">Contact:</span> Ext. ${esc(d.phone) || "—"}</div>
+        <div><span class="label">Technician:</span> ${esc(d.technician) || "—"}${d.amcName ? ' <span class="pill pill-amc">AMC Staff</span>' : ""}</div>
+        ${d.amcName ? `<div><span class="label">AMC:</span> ${esc(d.amcName)}</div>` : ""}
+        <div><span class="label">Contact:</span> ${d.phone ? `Ext. ${esc(d.phone)}` : "—"}</div>
       </div>`;
     }
     if (step.key === "material") {
