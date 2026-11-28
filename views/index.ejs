@@ -25,6 +25,31 @@
       </div>
     </div>
 
+    <!-- Live charts (public/js/stats.js), refreshed every 10 minutes -->
+    <section class="stats mb-8" id="stats" aria-labelledby="statsTitle">
+      <div class="stats-head">
+        <h2 class="h5 m-0" id="statsTitle">Job cards at a glance</h2>
+        <span class="small text-muted-2" id="statsUpdated" aria-live="polite">Loading…</span>
+      </div>
+      <div class="row g-5">
+        <div class="col-12 md:col-6">
+          <figure class="panel panel-body chart-card m-0" data-chart="ac">
+            <figcaption class="chart-title">AC &amp; Refrigeration Section</figcaption>
+            <p class="chart-sub">Job cards submitted by users vs preventive services</p>
+            <div class="chart-body"></div>
+          </figure>
+        </div>
+        <div class="col-12 md:col-6">
+          <figure class="panel panel-body chart-card m-0" data-chart="sections">
+            <figcaption class="chart-title">Job cards by section</figcaption>
+            <p class="chart-sub">All job card applications, by the section they were sent to</p>
+            <div class="chart-body"></div>
+          </figure>
+        </div>
+      </div>
+      <div class="chart-tip" id="chartTip" role="status" hidden></div>
+    </section>
+
     <div class="row g-5">
       <div class="col-12 md:col-6">
         <h2 class="h5 mb-3">Section contacts</h2>
@@ -49,4 +74,4 @@
 <%- include("partials/qr-scan-dialog") %>
 <%# QR code reader (global jsQR), loaded as a classic script. %>
 <script src="/vendor/jsqr/jsQR.js" defer></script>
-<%- include("partials/footer") %>
+<%- include("partials/footer", { scripts: ["/js/stats.js"] }) %>

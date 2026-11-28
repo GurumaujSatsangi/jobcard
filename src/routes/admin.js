@@ -6,7 +6,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { query, withTransaction, nextArnNumber } from "../db.js";
 import {
-  SECTIONS, STATUS, PS_STATUS, PREVENTIVE_TYPES, sectionLabel, itemTypeLabel, normalizeCrewSerial,
+  SECTIONS, STATUS, PS_STATUS, PREVENTIVE_TYPES, sectionLabel, itemTypeLabel, normalizeCrewSerial, arnFromParam, arnPath,
 } from "../constants.js";
 import { AC_FIELDS, validateAc } from "../ac-fields.js";
 import { analyseCsv, templateCsv } from "../ac-import.js";
@@ -142,7 +142,7 @@ function readTechnician(body) {
   else if (data.amcName.length > 120) errors.amcName = "Keep the AMC name under 120 characters.";
   if (!text(b.mobile, 20)) errors.mobile = "Mobile number is required.";
   else if (!data.mobile) errors.mobile = "Enter a valid 10-digit mobile number.";
-  if (data.extension && !/^[0-9][0-9 /,-]{0,15}$/.test(data.extension)) errors.extension = "Enter the extension as digits, e.g. 2239.";
+  if (data.extension && !/^\d{1,4}$/.test(data.extension)) errors.extension = "Enter a valid IACS extension number (up to 4 digits).";
   if (data.staffType !== "AMC") data.amcName = "";
   if (Object.keys(errors).length) throw Object.assign(httpError(400, Object.values(errors)[0]), { errors });
   return data;
@@ -336,7 +336,7 @@ router.get("/api/job-cards", asyncRoute(async (req, res) => {
     crewSerialNumber: r.crew_serial_number,
     status: r.status,
     technician: r.technician,
-    receiptUrl: r.assigned_at ? `/admin/api/job-cards/${encodeURIComponent(r.arn)}/jobcard.pdf` : null,
+    receiptUrl: r.assigned_at ? `/admin/api/job-cards/${arnPath(r.arn)}/jobcard.pdf` : null,
   })), Number(n), page));
 }));
 
@@ -350,11 +350,11 @@ router.get("/api/job-cards/:arn/jobcard.pdf", asyncRoute(async (req, res) => {
        LEFT JOIN technician_accounts t ON t.id = jc.technician_id
        LEFT JOIN ac_units a ON a.crew_serial_number = jc.crew_serial_number
       WHERE jc.arn = ?`,
-    [String(req.params.arn).toUpperCase()],
+    [arnFromParam(req.params.arn)],
   );
   if (!jc) throw httpError(404, "Job card not found.");
   if (!jc.assigned_at) throw httpError(409, "Assign a technician first; the job card PDF is available after that.");
-  res.set({ "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="jobcard-${jc.arn}.pdf"` });
+  res.set({ "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="jobcard-${jc.arn.replaceAll("/", "-")}.pdf"` });
   jobCardPdf(jc).pipe(res);
 }));
 
@@ -363,7 +363,7 @@ router.get("/api/job-cards/:arn", asyncRoute(async (req, res) => {
     `SELECT jc.*, COALESCE(t.name, jc.technician_name) AS tech_name, COALESCE(t.phone, jc.technician_phone) AS tech_phone, IF(t.id IS NULL, jc.technician_amc_name, t.amc_name) AS tech_amc
        FROM job_cards jc LEFT JOIN technician_accounts t ON t.id = jc.technician_id
       WHERE jc.arn = ?`,
-    [String(req.params.arn).toUpperCase()],
+    [arnFromParam(req.params.arn)],
   );
   const jc = rows[0];
   if (!jc) throw httpError(404, "Job card not found.");
@@ -383,6 +383,8 @@ router.get("/api/job-cards/:arn", asyncRoute(async (req, res) => {
     department: jc.department,
     itemType: jc.item_type ? itemTypeLabel(jc.item_type) : null,
     crewSerialNumber: jc.crew_serial_number,
+    roomNumber: jc.room_number,
+    labInCharge: jc.lab_in_charge,
     detailsCorrect: jc.details_correct === null ? null : Boolean(jc.details_correct),
     description: jc.description,
     submittedOn: fmt(jc.created_at),
@@ -394,7 +396,7 @@ router.get("/api/job-cards/:arn", asyncRoute(async (req, res) => {
     materials: jc.materials_issued,
     materialIssuedAt: fmt(jc.material_issued_at),
     closedAt: fmt(jc.closed_at),
-    receiptUrl: jc.assigned_at ? `/admin/api/job-cards/${encodeURIComponent(jc.arn)}/jobcard.pdf` : null,
+    receiptUrl: jc.assigned_at ? `/admin/api/job-cards/${arnPath(jc.arn)}/jobcard.pdf` : null,
     files: files.map((f) => ({
       url: `/admin/files/attachment/${f.id}`,
       name: f.original_name,
@@ -406,14 +408,15 @@ router.get("/api/job-cards/:arn", asyncRoute(async (req, res) => {
 }));
 
 router.post("/api/job-cards/:arn/assign", asyncRoute(async (req, res) => {
-  const arn = String(req.params.arn).toUpperCase();
+  const arn = arnFromParam(req.params.arn);
   const technicianId = Number(req.body?.technicianId);
   if (!Number.isInteger(technicianId) || technicianId < 1) throw httpError(400, "Choose a technician.");
 
   const { result, jc, tech, previous } = await withTransaction(async (tx) => {
     const { rows: [jc] } = await tx.query(
       `SELECT jc.id, jc.arn, jc.section, jc.status, jc.technician_id, jc.first_name, jc.last_name, jc.contact_number,
-              jc.department, jc.crew_serial_number, jc.description, a.room_number
+              jc.department, jc.crew_serial_number, jc.description, jc.lab_in_charge,
+              COALESCE(a.room_number, jc.room_number) AS room_number
          FROM job_cards jc LEFT JOIN ac_units a ON a.crew_serial_number = jc.crew_serial_number
         WHERE jc.arn = ? FOR UPDATE`,
       [arn],
@@ -452,7 +455,8 @@ router.post("/api/job-cards/:arn/assign", asyncRoute(async (req, res) => {
     contact: jc.contact_number,
     department: jc.department,
     crewSerialNumber: jc.section === "AC_REFRIGERATION" ? jc.crew_serial_number : null,
-    roomNumber: jc.section === "AC_REFRIGERATION" ? jc.room_number : null,
+    roomNumber: jc.room_number,
+    inCharge: jc.lab_in_charge,
     description: jc.description,
   }, { reassigned: Boolean(jc.technician_id) && !sameTech }));
   if (previous?.telegram_user_id) await sendTechnicianAlert(previous.telegram_user_id, jobRemovedText(jc.arn));

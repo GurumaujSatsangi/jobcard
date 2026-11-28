@@ -5,7 +5,10 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import crypto from "node:crypto";
 import { query, withTransaction, nextArnNumber } from "../db.js";
-import { SECTIONS, AC_ITEM_TYPES, OFFICIAL_EMAIL_DOMAIN, STATUS, sectionLabel, itemTypeLabel, normalizeCrewSerial } from "../constants.js";
+import {
+  SECTIONS, AC_ITEM_TYPES, OFFICIAL_EMAIL_DOMAIN, STATUS, ROOM_SECTIONS, sectionLabel, itemTypeLabel, normalizeCrewSerial,
+  arnFor, arnFromParam,
+} from "../constants.js";
 
 export const UPLOAD_DIR = path.resolve("uploads");
 
@@ -145,10 +148,34 @@ router.get("/ac/:crew", async (req, res, next) => {
   }
 });
 
+// Counts for the home page charts (all time). Cached for a minute so many
+// visitors don't each hit the database; the page refreshes every 10 minutes.
+let statsCache = null;
+router.get("/stats", async (_req, res, next) => {
+  try {
+    if (!statsCache || Date.now() - statsCache.at > 60_000) {
+      const { rows: bySection } = await query("SELECT section, COUNT(*) AS n FROM job_cards GROUP BY section");
+      const { rows: [ps] } = await query("SELECT COUNT(*) AS n FROM preventive_services");
+      const count = new Map(bySection.map((r) => [r.section, Number(r.n)]));
+      statsCache = {
+        at: Date.now(),
+        data: {
+          updatedAt: new Date().toISOString(),
+          ac: { jobCards: count.get("AC_REFRIGERATION") ?? 0, preventive: Number(ps.n) },
+          sections: SECTIONS.map((s) => ({ value: s.value, label: s.label, count: count.get(s.value) ?? 0 })),
+        },
+      };
+    }
+    res.set("Cache-Control", "no-store").json(statsCache.data);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Check the status of a job card by ARN.
 router.get("/job-cards/:arn", async (req, res, next) => {
   try {
-    const arn = req.params.arn.trim().toUpperCase();
+    const arn = arnFromParam(req.params.arn);
     const { rows } = await query(
       `SELECT jc.*, ta.name AS ta_name, ta.phone AS ta_phone, IF(ta.id IS NULL, jc.technician_amc_name, ta.amc_name) AS ta_amc
          FROM job_cards jc LEFT JOIN technician_accounts ta ON ta.id = jc.technician_id
@@ -187,6 +214,8 @@ router.get("/job-cards/:arn", async (req, res, next) => {
       indentor: `${jc.first_name} ${jc.last_name}`,
       section: sectionLabel(jc.section),
       crewSerialNumber: jc.section === "AC_REFRIGERATION" ? jc.crew_serial_number : null,
+      roomNumber: jc.room_number,
+      labInCharge: jc.lab_in_charge,
       description: jc.description,
       status: jc.status,
       steps,
@@ -210,13 +239,15 @@ function validate(body) {
     crewSerialNumber: s("crewSerialNumber") ? normalizeCrewSerial(s("crewSerialNumber")) : null,
     detailsCorrect: s("detailsCorrect"),
     description: s("description"),
+    roomNumber: s("roomNumber"),
+    labInCharge: s("labInCharge"),
   };
 
   if (!data.firstName) errors.firstName = "First name is required.";
   if (!data.lastName) errors.lastName = "Last name is required.";
   if (!new RegExp(`^[^\\s@]+@${OFFICIAL_EMAIL_DOMAIN.replace(".", "\\.")}$`).test(data.email))
     errors.email = `Please enter your official @${OFFICIAL_EMAIL_DOMAIN} email.`;
-  if (!/^\d{2,6}$/.test(data.contactNumber)) errors.contactNumber = "Enter a valid IACS extension number.";
+  if (!/^\d{1,4}$/.test(data.contactNumber)) errors.contactNumber = "Enter a valid IACS extension number (up to 4 digits).";
   if (!data.department) errors.department = "This field is required.";
   if (!SECTIONS.some((x) => x.value === data.section)) errors.section = "Please select a section.";
   if (data.description.length < 5) errors.description = "Please describe the issue.";
@@ -232,6 +263,18 @@ function validate(body) {
   } else {
     data.itemType = null;
     data.crewSerialNumber = null;
+  }
+  // Non-AC sections: Faculty / Guide / Lab In-Charge; Electrical and Intercom also Room / Lab number.
+  if (data.section && data.section !== "AC_REFRIGERATION") {
+    if (!data.labInCharge) errors.labInCharge = "Faculty / Guide / Lab In-Charge is required.";
+    else if (data.labInCharge.length > 255) errors.labInCharge = "Keep this under 255 characters.";
+  } else data.labInCharge = "";
+  if (ROOM_SECTIONS.includes(data.section)) {
+    if (!data.roomNumber) errors.roomNumber = "Room Number / Lab Number is required.";
+    else if (data.roomNumber.length > 64) errors.roomNumber = "Keep this under 64 characters.";
+  } else data.roomNumber = "";
+  for (const k of ["firstName", "lastName", "department"]) {
+    if (data[k].length > 255 && !errors[k]) errors[k] = "Keep this under 255 characters.";
   }
   data.detailsCorrect = data.crewSerialNumber ? data.detailsCorrect === "yes" : null;
   return { data, errors };
@@ -278,17 +321,18 @@ router.post("/job-cards", (req, res, next) => {
           }
         }
 
-        const year = new Date().getFullYear();
-        const n = await nextArnNumber(tx, year);
-        const newArn = `JC${year}${String(n).padStart(6, "0")}`;
+        // WS/<section>/<7 digits>; each section has its own never-resetting counter.
+        const code = SECTIONS.find((x) => x.value === data.section).arnCode;
+        const newArn = arnFor(data.section, await nextArnNumber(tx, 0, code));
 
         const inserted = await tx.query(
           `INSERT INTO job_cards
             (arn, first_name, last_name, email, contact_number, department, section,
-             item_type, crew_serial_number, details_correct, description)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+             item_type, crew_serial_number, details_correct, room_number, lab_in_charge, description)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
           [newArn, data.firstName, data.lastName, data.email, data.contactNumber, data.department,
-           data.section, data.itemType, data.crewSerialNumber, data.detailsCorrect, data.description],
+           data.section, data.itemType, data.crewSerialNumber, data.detailsCorrect,
+           data.roomNumber || null, data.labInCharge || null, data.description],
         );
 
         for (const f of req.files ?? []) {

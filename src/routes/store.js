@@ -13,7 +13,7 @@ import path from "node:path";
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { query, withTransaction } from "../db.js";
-import { STATUS, STORE_UNITS, sectionLabel } from "../constants.js";
+import { STATUS, STORE_UNITS, sectionLabel, arnFromParam } from "../constants.js";
 import { itemIssuesPdf } from "../item-issues-pdf.js";
 import { verifyStore, startSession, endSession, getStoreUser, requireStore } from "../auth/store-auth.js";
 import { sameOriginOnly } from "../auth/session-auth.js";
@@ -78,12 +78,12 @@ async function loadJobCard(q, arn, { lock = false } = {}) {
     `SELECT jc.id, jc.arn, jc.first_name, jc.last_name, jc.department, jc.section, jc.status,
             jc.crew_serial_number, jc.description, jc.assigned_at,
             COALESCE(t.name, jc.technician_name) AS tech_name, COALESCE(t.phone, jc.technician_phone) AS tech_phone, IF(t.id IS NULL, jc.technician_amc_name, t.amc_name) AS tech_amc,
-            a.room_number, a.in_charge
+            COALESCE(a.room_number, jc.room_number) AS room_number, COALESCE(a.in_charge, jc.lab_in_charge) AS in_charge
        FROM job_cards jc
        LEFT JOIN technician_accounts t ON t.id = jc.technician_id
        LEFT JOIN ac_units a ON a.crew_serial_number = jc.crew_serial_number
       WHERE jc.arn = ? ${lock ? "FOR UPDATE" : ""}`,
-    [String(arn).trim().toUpperCase()],
+    [arnFromParam(arn)],
   );
   return jc ?? null;
 }

@@ -74,6 +74,10 @@ export function jobCardPdf(jc) {
     row("Faculty / Staff / In-charge", jc.ac_in_charge);
     row("Room No.", jc.ac_room_number);
   }
+  if (!isAc) {
+    if (jc.room_number) row("Room Number / Lab Number", jc.room_number);
+    if (jc.lab_in_charge) row("Faculty / Guide / Lab In-Charge", jc.lab_in_charge);
+  }
   row("Details of Work", jc.description);
 
   y += 2;

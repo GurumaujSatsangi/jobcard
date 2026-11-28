@@ -36,8 +36,8 @@
         <div class="row g-3 field">
           <div class="col-12 sm:col-5">
             <label class="form-label" for="contactNumber">IACS extension no. <span class="req">*</span></label>
-            <input type="text" inputmode="numeric" class="form-control" id="contactNumber" name="contactNumber" required pattern="\d{2,6}" maxlength="6">
-            <div class="invalid-feedback" data-for="contactNumber">Enter a valid IACS extension number.</div>
+            <input type="text" inputmode="numeric" class="form-control" id="contactNumber" name="contactNumber" required pattern="\d{1,4}" maxlength="4" placeholder="e.g. 1703">
+            <div class="invalid-feedback" data-for="contactNumber">Enter a valid IACS extension number (up to 4 digits).</div>
           </div>
           <div class="col-12 sm:col-7">
             <label class="form-label" for="department">School / Department / Section / Unit <span class="req">*</span></label>
@@ -81,11 +81,10 @@
           <div class="field">
             <label class="form-label" for="crewSerialNumber">CREW serial number <span class="req">*</span></label>
             <div class="input-group">
-              <input type="text" class="form-control text-uppercase" id="crewSerialNumber" name="crewSerialNumber" placeholder="e.g. IACS/CREW/AC/00001 or just 1" autocomplete="off" aria-describedby="crewHelp">
+              <input type="text" class="form-control text-uppercase" id="crewSerialNumber" name="crewSerialNumber" placeholder="e.g. IACS/CREW/AC/00001 or just 1" autocomplete="off">
               <button type="button" class="btn btn-solid theme-primary" id="crewFetchBtn">Fetch data</button>
             </div>
             <button type="button" class="btn btn-outline theme-primary btn-sm mt-2" id="crewScanBtn"><i class="bi bi-qr-code-scan" aria-hidden="true"></i> Scan QR on keytag</button>
-            <div class="form-text" id="crewHelp">Printed on the CREW sticker on your AC. You can type only the number.</div>
             <div class="invalid-feedback" data-for="crewSerialNumber">CREW Serial Number is required.</div>
             <button type="button" class="link-btn mt-2" id="crewForgotBtn">Forgot the CREW Serial Number? <span class="text-decoration-underline">Click Here</span></button>
           </div>
@@ -107,6 +106,20 @@
               <div class="form-text" id="detailsNoHint" hidden>Please mention the correct details in the description below.</div>
             </div>
           </div>
+        </div>
+
+        <!-- Electrical and Intercom / EPABX only -->
+        <div class="field" id="roomGroup" hidden>
+          <label class="form-label" for="roomNumber">Room Number / Lab Number <span class="req">*</span></label>
+          <input type="text" class="form-control" id="roomNumber" name="roomNumber" maxlength="64" autocomplete="off">
+          <div class="invalid-feedback" data-for="roomNumber">Room Number / Lab Number is required.</div>
+        </div>
+
+        <!-- Every section except AC -->
+        <div class="field" id="inChargeGroup" hidden>
+          <label class="form-label" for="labInCharge">Faculty / Guide / Lab In-Charge <span class="req">*</span></label>
+          <input type="text" class="form-control" id="labInCharge" name="labInCharge" maxlength="255" autocomplete="off">
+          <div class="invalid-feedback" data-for="labInCharge">Faculty / Guide / Lab In-Charge is required.</div>
         </div>
 
         <div class="field">
@@ -145,5 +158,22 @@
     <button type="button" class="btn btn-subtle theme-secondary" data-bs-dismiss="dialog" id="jobCardCancelBtn">Cancel</button>
     <button type="submit" form="jobCardForm" class="btn btn-solid theme-primary" id="jobCardSubmitBtn">Submit application</button>
     <button type="button" class="btn btn-solid theme-primary" id="jobCardNewBtn" hidden>Submit another</button>
+  </div>
+</dialog>
+
+<!-- Saved indentor details (from a cookie set on this browser's last submission) -->
+<dialog class="dialog" id="savedDetailsDialog" aria-labelledby="savedDetailsTitle">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="savedDetailsTitle">Continue with these details?</h2>
+    <button type="button" class="btn-close" data-saved-choice="no" aria-label="Close"></button>
+  </div>
+  <div class="dialog-body">
+    <p class="text-muted-2 small">These details were saved on this browser when an application was last submitted from it.</p>
+    <div class="table-responsive"><table class="kv-table"><tbody id="savedDetailsBody"></tbody></table></div>
+    <button type="button" class="link-btn small mt-3" data-saved-choice="forget">Not you? <span class="text-decoration-underline">Forget these details on this browser</span></button>
+  </div>
+  <div class="dialog-footer">
+    <button type="button" class="btn btn-subtle theme-secondary" data-saved-choice="no">No, enter new details</button>
+    <button type="button" class="btn btn-solid theme-primary" data-saved-choice="yes">Yes, use these details</button>
   </div>
 </dialog>

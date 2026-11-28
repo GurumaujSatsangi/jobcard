@@ -5,7 +5,7 @@ import path from "node:path";
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { query, withTransaction } from "../db.js";
-import { STATUS, PS_STATUS, sectionLabel, normalizeCrewSerial } from "../constants.js";
+import { STATUS, PS_STATUS, sectionLabel, normalizeCrewSerial, arnFromParam, arnPath } from "../constants.js";
 import {
   PASSCODE_LENGTH,
   verifyPasscode,
@@ -106,7 +106,7 @@ async function openJobsFor(tech) {
   const jobs = rows.map((r) => ({
     kind: "job",
     arn: r.arn,
-    action: `/technician/job-cards/${encodeURIComponent(r.arn)}/receipt`,
+    action: `/technician/job-cards/${arnPath(r.arn)}/receipt`,
     indentor: `${r.first_name} ${r.last_name}`,
     contact: r.contact_number,
     department: r.department,
@@ -239,7 +239,7 @@ router.get("/", requireTechnician, async (req, res, next) => {
 // Upload the signed receipt; this closes the job card.
 router.post("/job-cards/:arn/receipt", requireTechnician, (req, res, next) => {
   receiptUpload(req, res, async (uploadErr) => {
-    const arn = String(req.params.arn).toUpperCase();
+    const arn = arnFromParam(req.params.arn);
     const file = req.file;
     const discard = () => file && fs.promises.unlink(file.path).catch(() => {});
 

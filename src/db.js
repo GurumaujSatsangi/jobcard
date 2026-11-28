@@ -439,6 +439,15 @@ export async function initDb() {
          ADD COLUMN telegram_user_id BIGINT NULL AFTER mobile`,
     );
   }
+  // Non-AC job cards: Room / Lab number (Electrical, Intercom) and the
+  // Faculty / Guide / Lab In-Charge (all sections except AC).
+  if (!(await columnExists("job_cards", "lab_in_charge"))) {
+    await query(
+      `ALTER TABLE job_cards
+         ADD COLUMN room_number VARCHAR(64) NULL AFTER details_correct,
+         ADD COLUMN lab_in_charge VARCHAR(255) NULL AFTER room_number`,
+    );
+  }
   // Job cards keep the AMC name of the technician as it was when assigned.
   if (!(await columnExists("job_cards", "technician_amc_name"))) {
     await query("ALTER TABLE job_cards ADD COLUMN technician_amc_name VARCHAR(120) NULL AFTER technician_phone");

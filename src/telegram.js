@@ -196,7 +196,8 @@ export function jobAssignedText(jc, { reassigned = false } = {}) {
     + line("Contact", jc.contact)
     + line("Department", jc.department)
     + line("CREW Serial No.", jc.crewSerialNumber)
-    + line("Room No.", jc.roomNumber)
+    + line("Room / Lab No.", jc.roomNumber)
+    + line("Faculty / Guide / Lab In-Charge", jc.inCharge)
     + line("Work", jc.description?.length > 300 ? `${jc.description.slice(0, 300)}…` : jc.description)
     + "\n\nOpen My Jobs on the Online Job Card Portal for details.";
 }

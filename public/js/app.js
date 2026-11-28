@@ -18,6 +18,9 @@ import { openQrScanner } from "/js/qr-scan.js";
     return body;
   }
 
+  // ARNs contain "/"; in URLs they are written with "-" (the server turns them back).
+  const arnPath = (arn) => encodeURIComponent(String(arn).trim().replaceAll("/", "-"));
+
   function setLoading(btn, loading, text) {
     if (loading) {
       btn.dataset.html = btn.innerHTML;
@@ -79,6 +82,8 @@ import { openQrScanner } from "/js/qr-scan.js";
     const rows = [
       ["Name of Indentor", esc(d.indentor)],
       d.crewSerialNumber && ["CREW Serial Number", esc(d.crewSerialNumber)],
+      d.roomNumber && ["Room Number / Lab Number", esc(d.roomNumber)],
+      d.labInCharge && ["Faculty / Guide / Lab In-Charge", esc(d.labInCharge)],
       ["Application Reference Number (ARN)", `<span class="font-monospace fw-semibold">${esc(d.arn)}</span>`],
       ["Description of Issue", esc(d.description)],
     ].filter(Boolean);
@@ -110,7 +115,7 @@ import { openQrScanner } from "/js/qr-scan.js";
       ? '<button type="button" class="btn btn-subtle theme-secondary btn-sm mb-4" data-back-to-email><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to all applications</button>'
       : "";
     try {
-      const d = await api(`/api/job-cards/${encodeURIComponent(arn)}`);
+      const d = await api(`/api/job-cards/${arnPath(arn)}`);
       statusResult.innerHTML = backBtn + renderStatus(d);
     } catch (err) {
       statusResult.innerHTML = `${backBtn}<div class="flash flash-err mb-0" role="alert"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span>${esc(err.message)}</span></div>`;
@@ -234,7 +239,18 @@ import { openQrScanner } from "/js/qr-scan.js";
     $("#detailsNoHint").hidden = true;
   }
 
+  const ROOM_SECTIONS = ["ELECTRICAL", "INTERCOM_EPABX"];
+  const needsRoom = () => ROOM_SECTIONS.includes(form.section.value);
+  const needsInCharge = () => Boolean(form.section.value) && !isAC();
+
   function syncConditionalFields() {
+    $("#roomGroup").hidden = !needsRoom();
+    $("#roomNumber").required = needsRoom();
+    $("#inChargeGroup").hidden = !needsInCharge();
+    $("#labInCharge").required = needsInCharge();
+    $("#description").placeholder = form.section.value === "INTERCOM_EPABX"
+      ? "Please specify the Intercom Number and describe the issue/problem faced"
+      : "";
     itemTypeGroup.hidden = !isAC();
     if (!isAC()) $$('[name="itemType"]', form).forEach((r) => (r.checked = false));
     crewGroup.hidden = !needsCrew();
@@ -432,6 +448,11 @@ import { openQrScanner } from "/js/qr-scan.js";
       if (!el.checkValidity()) fail(n);
     });
     if (!form.section.value) fail("section");
+    for (const [name, needed] of [["roomNumber", needsRoom()], ["labInCharge", needsInCharge()]]) {
+      const el = form.elements[name];
+      el.value = el.value.trim();
+      if (needed && !el.value) fail(name);
+    }
     if (isAC() && !form.itemType.value) fail("itemType");
     if (needsCrew()) {
       if (!fetchedCrew) fail("crewSerialNumber", "Please enter the CREW Serial Number and press Fetch Data.");
@@ -457,6 +478,7 @@ import { openQrScanner } from "/js/qr-scan.js";
     setLoading(btn, true, "Submitting…");
     try {
       const { arn } = await api("/api/job-cards", { method: "POST", body: fd });
+      saveDetails();
       $("#successArn").textContent = arn;
       form.hidden = true;
       $("#jobCardSuccess").hidden = false;
@@ -486,7 +508,69 @@ import { openQrScanner } from "/js/qr-scan.js";
     $("#jobCardCancelBtn").textContent = "Cancel";
   }
 
-  $("#jobCardNewBtn").addEventListener("click", resetJobCard);
+  /* ---------- Saved indentor details ----------
+     After a successful submission the indentor's own details are kept in a
+     cookie on this browser for 7 days. Next time the form opens we ask before
+     filling them in. Only these five fields are stored. */
+  const SAVED_COOKIE = "jc_indentor";
+  const SAVED_FIELDS = [
+    ["firstName", "First name"],
+    ["lastName", "Last name"],
+    ["email", "Official email"],
+    ["contactNumber", "IACS extension no."],
+    ["department", "School / Department / Section / Unit"],
+  ];
+
+  function saveDetails() {
+    const data = Object.fromEntries(SAVED_FIELDS.map(([k]) => [k, form.elements[k].value.trim()]));
+    const secure = location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `${SAVED_COOKIE}=${encodeURIComponent(JSON.stringify(data))}; Max-Age=${7 * 24 * 60 * 60}; Path=/; SameSite=Lax${secure}`;
+  }
+
+  function readDetails() {
+    const raw = document.cookie.split("; ").find((c) => c.startsWith(`${SAVED_COOKIE}=`))?.slice(SAVED_COOKIE.length + 1);
+    if (!raw) return null;
+    try {
+      const data = JSON.parse(decodeURIComponent(raw));
+      return SAVED_FIELDS.every(([k]) => typeof data[k] === "string") && data.firstName ? data : null;
+    } catch {
+      return null;
+    }
+  }
+
+  const forgetDetails = () => { document.cookie = `${SAVED_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax`; };
+
+  const savedDialogEl = $("#savedDetailsDialog");
+  const savedDialog = Dialog.getOrCreateInstance(savedDialogEl);
+  let pendingDetails = null;
+
+  // Ask when the (empty) form opens and details are saved on this browser.
+  $("#newJobCardDialog").addEventListener("show.bs.dialog", () => askSavedDetails());
+
+  function askSavedDetails() {
+    if (form.hidden || SAVED_FIELDS.some(([k]) => form.elements[k].value.trim())) return;
+    pendingDetails = readDetails();
+    if (!pendingDetails) return;
+    $("#savedDetailsBody").innerHTML = SAVED_FIELDS
+      .map(([k, label]) => `<tr><th scope="row">${esc(label)}</th><td>${esc(pendingDetails[k]) || "—"}</td></tr>`)
+      .join("");
+    setTimeout(() => savedDialog.show(), 150); // after the form dialog has opened
+  }
+
+  savedDialogEl.addEventListener("click", (e) => {
+    const choice = e.target.closest("[data-saved-choice]")?.dataset.savedChoice;
+    if (!choice) return;
+    if (choice === "yes" && pendingDetails) {
+      for (const [k] of SAVED_FIELDS) form.elements[k].value = pendingDetails[k];
+      clearErrors();
+    }
+    if (choice === "forget") forgetDetails();
+    pendingDetails = null;
+    savedDialog.hide();
+    setTimeout(() => (choice === "yes" ? form.section[0] : form.firstName)?.focus(), 100);
+  });
+
+  $("#jobCardNewBtn").addEventListener("click", () => { resetJobCard(); askSavedDetails(); });
   // Start fresh next time the dialog opens after a successful submission.
   $("#newJobCardDialog").addEventListener("hidden.bs.dialog", () => {
     if (form.hidden) resetJobCard();

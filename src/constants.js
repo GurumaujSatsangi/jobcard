@@ -1,10 +1,10 @@
 // Sections that accept job cards, with their help-desk extension numbers.
 export const SECTIONS = [
-  { value: "AC_REFRIGERATION", label: "Air Conditioning & Refrigeration Section", extension: "2170", icon: "snow" },
-  { value: "GLASS_BLOWING", label: "Glass Blowing Section", extension: "1703", icon: "cup-straw" },
-  { value: "ELECTRICAL", label: "Electrical Section", extension: "1704", icon: "lightning-charge" },
-  { value: "MECHANICAL", label: "Mechanical Section", extension: "1700 / 1164", icon: "gear" },
-  { value: "INTERCOM_EPABX", label: "Intercom / EPABX Section", extension: "9", icon: "telephone" },
+  { value: "AC_REFRIGERATION", label: "Air Conditioning & Refrigeration Section", extension: "2170", icon: "snow", arnCode: "AC" },
+  { value: "GLASS_BLOWING", label: "Glass Blowing Section", extension: "1703", icon: "cup-straw", arnCode: "GB" },
+  { value: "ELECTRICAL", label: "Electrical Section", extension: "1704", icon: "lightning-charge", arnCode: "ELEC" },
+  { value: "MECHANICAL", label: "Mechanical Section", extension: "1700 / 1164", icon: "gear", arnCode: "MECH" },
+  { value: "INTERCOM_EPABX", label: "Intercom / EPABX Section", extension: "9", icon: "telephone", arnCode: "EPABX" },
 ];
 
 export const AC_ITEM_TYPES = [
@@ -57,3 +57,18 @@ export const STORE_UNITS = [
   { value: "g", label: "Gram", decimal: true },
   { value: "sq inch", label: "Square Inch", decimal: true },
 ];
+
+// Application Reference Numbers: WS/<section code>/<7-digit counter>, e.g.
+// WS/AC/0000001. Each section has its own counter (arn_counters prefix = code,
+// year = 0 because the number never resets).
+export const arnFor = (section, n) =>
+  `WS/${SECTIONS.find((s) => s.value === section).arnCode}/${String(n).padStart(7, "0")}`;
+
+// ARNs contain "/", which some web servers refuse inside a URL path even when
+// encoded. In URLs we write them with "-" (WS-AC-0000001) and turn them back
+// here. Older ARNs (JC2026000001) have no "-" or "/" and pass through as-is.
+export const arnFromParam = (v) => String(v ?? "").trim().toUpperCase().replace(/-/g, "/");
+export const arnPath = (arn) => encodeURIComponent(String(arn).replace(/\//g, "-"));
+
+// Sections whose job cards ask for the Room / Lab number.
+export const ROOM_SECTIONS = ["ELECTRICAL", "INTERCOM_EPABX"];

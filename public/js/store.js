@@ -4,6 +4,8 @@ const $ = (id) => document.getElementById(id);
 const esc = (v) =>
   String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const dash = (v) => (v ? esc(v) : "—");
+// ARNs contain "/"; in URLs they are written with "-" (the server turns them back).
+const arnPath = (arn) => encodeURIComponent(String(arn).trim().replaceAll("/", "-"));
 
 // Quantities as integer thousandths (avoids 0.1 + 0.2 problems).
 const toMilli = (v) => Math.round(Number(v) * 1000);
@@ -47,7 +49,7 @@ async function loadJob(arn, note) {
   const btn = $("arnFindBtn");
   btn.disabled = true;
   try {
-    const [job, items] = await Promise.all([api(`/store/api/job-cards/${encodeURIComponent(arn)}`), api("/store/api/items")]);
+    const [job, items] = await Promise.all([api(`/store/api/job-cards/${arnPath(arn)}`), api("/store/api/items")]);
     state.job = job;
     state.items = items;
     state.cart.clear();
@@ -71,7 +73,8 @@ function renderJob(note) {
     ["Indentor", esc(j.indentor)],
     ["Section", esc(j.section)],
     j.crewSerialNumber && ["CREW Serial Number", `<span class="font-monospace">${esc(j.crewSerialNumber)}</span>`],
-    ["Room No.", dash(j.roomNumber)],
+    ["Room / Lab No.", dash(j.roomNumber)],
+    j.inCharge && ["Faculty / In-Charge", esc(j.inCharge)],
     ["School / Department", dash(j.department)],
     ["Assigned technician", `${dash(j.technician)}${j.technicianAmc ? ' <span class="pill pill-amc">AMC Staff</span>' : ""}`],
     j.technicianAmc && ["AMC", esc(j.technicianAmc)],
@@ -267,7 +270,7 @@ $("issueSubmitBtn").addEventListener("click", async () => {
   try {
     const editing = state.editing;
     if (editing) await api(`/store/api/issues/${editing.id}`, { method: "PUT", body });
-    else await api(`/store/api/job-cards/${encodeURIComponent(state.job.arn)}/issues`, { method: "POST", body });
+    else await api(`/store/api/job-cards/${arnPath(state.job.arn)}/issues`, { method: "POST", body });
     await loadJob(state.job.arn, editing ? `MR Slip ${mr} updated.` : `Items issued on MR Slip ${mr}.`);
   } catch (err) {
     $("issueError").innerHTML = `<i class="bi bi-exclamation-circle" aria-hidden="true"></i><span>${esc(err.message)}</span>`;

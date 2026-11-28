@@ -23,6 +23,9 @@ async function api(url, { method = "GET", body } = {}) {
   return data;
 }
 
+// ARNs contain "/"; in URLs they are written with "-" (the server turns them back).
+const arnPath = (arn) => encodeURIComponent(String(arn).trim().replaceAll("/", "-"));
+
 const debounce = (fn, ms = 300) => {
   let t;
   return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
@@ -179,7 +182,7 @@ const statusPill = (s) =>
     showView(dialog, "detail");
     detail.innerHTML = '<div class="list-msg"><span class="spinner-border spinner-sm"></span> Loading…</div>';
     try {
-      renderJob(await api(`/admin/api/job-cards/${encodeURIComponent(arn)}`));
+      renderJob(await api(`/admin/api/job-cards/${arnPath(arn)}`));
     } catch (err) {
       detail.innerHTML = `<div class="flash flash-err"><span>${esc(err.message)}</span></div>`;
     }
@@ -193,6 +196,8 @@ const statusPill = (s) =>
       ["School / Department / Section / Unit", esc(j.department)],
       j.itemType && ["Item type", esc(j.itemType)],
       j.crewSerialNumber && ["CREW serial no.", esc(j.crewSerialNumber)],
+      j.roomNumber && ["Room / Lab no.", esc(j.roomNumber)],
+      j.labInCharge && ["Faculty / Guide / Lab In-Charge", esc(j.labInCharge)],
       j.detailsCorrect === false && ["AC details", "Indentor said the AC details were <strong>not</strong> correct"],
       ["Description", esc(j.description)],
       ["Submitted", dash(j.submittedOn)],
@@ -238,7 +243,7 @@ const statusPill = (s) =>
       if (!technicianId) return showFormError(form, { message: "Choose a technician." });
       setBusy(btn, true, "Assigning…");
       try {
-        const { telegramAlert } = await api(`/admin/api/job-cards/${encodeURIComponent(j.arn)}/assign`, { method: "POST", body: { technicianId } });
+        const { telegramAlert } = await api(`/admin/api/job-cards/${arnPath(j.arn)}/assign`, { method: "POST", body: { technicianId } });
         await openJob(j.arn);
         const ok = $("[data-ok]", detail);
         if (ok) { ok.innerHTML = `<i class="bi bi-check-circle"></i><span>Technician assigned. It now shows on their My Jobs page. ${alertNote(telegramAlert)}</span>`; ok.hidden = false; }
